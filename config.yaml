@@ -1,0 +1,159 @@
+# 链的名字
+chain_name: "scope"
+version: 1.0.0
+
+# web客户端
+client:
+  organization: org1
+  # 客户端证书地址
+  crypto_config:
+    crypto_store:
+    path: /tmp/heroes-service-msp
+    # [Optional]. Client key and cert for TLS handshake with peers and orderers
+
+common:
+  log_config:
+    # 日志配置
+    root_path: "/usr/local/scopeLog/"
+    info_log_name: info.log
+    debug_log_name: debug.log
+    error_log_name: error.log
+    log_level: debug
+    output_file: false
+  cache_cluster: [redis1]
+  ledger_name:
+    node_credible:
+      leader: leader
+      follower:
+    video:
+      leader: leader
+      follower:
+    sensor:
+      leader: leader
+      follower:
+    user_behaviour:
+      leader: leader
+      follower:
+    service_access:
+      leader: leader
+      follower:
+
+# 缓存集群
+cache:
+  common_config:
+    db: 0
+    password: ""
+    sync_interval: 10
+    sync_size_limit: 1
+    expire_time: 604800
+    connection: 3
+    response: 30
+  redis_group:
+    redis1:
+      host: 10.112.91.87
+      port: 6379
+      webservice:
+        url: 10.112.236.102:9000
+
+# 共识网络
+consensus:
+  common_config:
+    timeout: 10
+    max_live_days: 1
+  etcd_group:
+    leader:
+       #hraft_grpc_address: "10.112.15.242:8880"
+       hraft_grpc_address: "127.0.0.1:8880"
+       block_grpc_address: "10.112.235.124:8889"
+       host: "10.112.235.124"
+       port: 2379
+
+
+  async_task:
+    node_credible:
+      genesis_block:
+        interval: 86400
+      min_block:
+        pack_interval: 60
+      rehance_block:
+        pack_interval: 600
+      daily_block:
+        pack_interval: 86400
+      block_header:
+        interval: 6
+    video:
+      genesis_block:
+        interval: 86400
+      min_block:
+        pack_interval: 60
+      rehance_block:
+        pack_interval: 600
+      daily_block:
+        pack_interval: 86400
+      block_header:
+        interval: 6
+    sensor:
+      genesis_block:
+        interval: 86400
+      min_block:
+        pack_interval: 60
+      rehance_block:
+        pack_interval: 600
+      daily_block:
+        pack_interval: 86400
+      block_header:
+        interval: 6
+    user_behaviour:
+      genesis_block:
+        interval: 86400
+      min_block:
+        pack_interval: 60
+      rehance_block:
+        pack_interval: 600
+      daily_block:
+        pack_interval: 86400
+      block_header:
+        interval: 6
+    service_access:
+      genesis_block:
+        interval: 86400
+      min_block:
+        pack_interval: 60
+      rehance_block:
+        pack_interval: 600
+      daily_block:
+        pack_interval: 86400
+      block_header:
+        interval: 6
+
+# 区块存储
+block:
+  # TDengine的配置项
+  tdengine_config:
+    max_live_days: 100
+    # 节点域名
+    host_name: "node1"
+    # 监听端口
+    port: 6030
+    # 账户
+    user: "root"
+    # 密码
+    passwd: "taosdata"
+    # 数据在数据库中的存活时间
+    keep: 365
+    driver: "taosSql"
+    db_name: "testdb"
+    table_keep: 365
+    table_keepday: 30
+  # 区块文件配置项
+  block_file_config:
+    # 文件的存放根目录地址
+    root_path:  "./blockfile/"
+
+p2p:
+  local:
+    rendezvous: "scope"
+    pid: "/chat.go/1.1.0"
+    port: "6000"
+    host: "0.0.0.0"
+    groups:  [redis1,leader]
