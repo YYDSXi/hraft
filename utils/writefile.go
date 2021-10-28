@@ -16,12 +16,17 @@ import (
 
 func WriteReblocktominfile(time string, ledger string, index string, minReblock pb.MinuteDataBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/MINUTE"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
