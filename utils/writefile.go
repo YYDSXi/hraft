@@ -55,12 +55,17 @@ func WriteReblocktominfile(time string, ledger string, index string, minReblock 
 
 func WriteTxblocktominfile(time string, ledger string, index string, minTxblock pb.MinuteTxBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/MINUTE"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
@@ -74,12 +79,17 @@ func WriteTxblocktominfile(time string, ledger string, index string, minTxblock 
 
 func WriteReblocktoTenminfile(time string, ledger string, index string, tenminReblock pb.TenMinuteDataBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/TENMINUTE"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
@@ -93,12 +103,17 @@ func WriteReblocktoTenminfile(time string, ledger string, index string, tenminRe
 
 func WriteTxblocktoTenminfile(time string, ledger string, index string, tenminTxblock pb.TenMinuteTxBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/TENMINUTE"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
@@ -112,12 +127,17 @@ func WriteTxblocktoTenminfile(time string, ledger string, index string, tenminTx
 
 func WriteReblocktoDayfile(time string, ledger string, index string, dayReblock pb.DailyDataBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/DAY"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/DAY"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
@@ -131,12 +151,17 @@ func WriteReblocktoDayfile(time string, ledger string, index string, dayReblock 
 
 func WriteTxblocktoDayfile(time string, ledger string, index string, dayTxblock pb.DailyTxBlock) {
 
+	mindirectory, err := os.Getwd()
+
+	if err != nil {
+		fmt.Println(err)
+	}
 	var (
-		filedirectory = "/home/wsq/hraft/scope/" + time + "/" + ledger + "/DAY"
+		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/DAY"
 		fileName      = filedirectory + "/" + index
 	)
-	err := os.MkdirAll(filedirectory, os.ModePerm)
-	if err != nil {
+	err1 := os.MkdirAll(filedirectory, os.ModePerm)
+	if err1 != nil {
 		fmt.Println(err)
 	}
 
