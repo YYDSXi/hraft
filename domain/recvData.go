@@ -18,11 +18,11 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-type server struct{}//定义一个server结构体
+type server struct{} //定义一个server结构体
 
-var clientRedis *clientv3.Client//etcd的客户端？？？
+var clientRedis *clientv3.Client //etcd的客户端？？？
 
-func RedisServerMain(client *clientv3.Client) {//redis服务端
+func RedisServerMain(client *clientv3.Client) { //redis服务端
 	clientRedis = client
 	//遍历开启端口
 	go StartGrpcPort(":" + Port)
@@ -85,17 +85,17 @@ func (s *server) ServiceAccess(ctx context.Context, in *pb.ServiceAccessData) (*
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
-//存证数据
+//将接收到的存证数据存入数据库
 //[]*proto.DataReceipt
 func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 	for i := 0; i < len(structArray); i++ {
 
-		if structArray[i].CreateTimestamp != "" && structArray[i].KeyId != ""{
+		if structArray[i].CreateTimestamp != "" && structArray[i].KeyId != "" {
 
-			dataReceipt := structArray[i]
-			if !utils.TimeTrue(dataReceipt.CreateTimestamp){
-				log.Error("时间戳不合法",dataReceipt.CreateTimestamp)
+			dataReceipt := structArray[i] //申请的dataReceipt变量为存证数据结构
+			if !utils.TimeTrue(dataReceipt.CreateTimestamp) {
+				log.Error("时间戳不合法", dataReceipt.CreateTimestamp)
 				log.Error("正确格式为:2021-06-01 12:12:12.123")
 				continue
 			}
@@ -109,7 +109,7 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 			delayMinTimeInt := utils.GetIndexMinInt() - indexMinInt
 			//如果是10分钟之前的数据 过滤掉不处理
 			if delayMinTimeInt > utils.Conf.Consensus.CommonConfig.Timeout {
-				log.Error("数据",structArray[i])
+				log.Error("数据", structArray[i])
 				log.Error("时间戳超过阈值，不做处理！", dataReceipt.CreateTimestamp)
 				continue
 			} else if delayMinTimeInt > 1 {
@@ -118,7 +118,7 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				var array interface{}
 				switch {
 				case LEDGER_TYPE == LEDGER_TYPE_VIDEO:
-					array, _ = DelayLedgerVideo.Get(delayMinTimeInt)
+					array, _ = DelayLedgerVideo.Get(delayMinTimeInt) //list结构，该结构包含追加、更新、删除等方法;获取该延迟索引位置的数据
 					array = append(array.([]string), perDataKeyString)
 					DelayLedgerVideo.Update(delayMinTimeInt, array)
 				case LEDGER_TYPE == LEDGER_TYPE_USER_BEHAVIOR:
@@ -126,16 +126,17 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 					array = append(array.([]string), perDataKeyString)
 					DelayLedgerUserBehavior.Update(delayMinTimeInt, array)
 				}
-				delayDataReceiptByteArray, _ := json.Marshal(dataReceipt)
-				utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout)
+				//这里将数据存入数据库，应该改为用临时存储
+				delayDataReceiptByteArray, _ := json.Marshal(dataReceipt)                                       //将数据结构编码成json
+				utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout) //delayDataReceiptByteArray[]byte类型，转化成string类型便于查看
 				log.Info("接收到延时数据")
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayDataReceiptByteArray))
 				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
-				utils.StatisticalAllDataSize(clientRedis,LEDGER_TYPE,len(string(delayDataReceiptByteArray)),RequestTimeout,false)
+				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayDataReceiptByteArray)), RequestTimeout, false)
 				//延时数据 叠加
-				utils.StatisticalCurDayDelayData(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
+				utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
 				continue
 			}
 
@@ -166,7 +167,7 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 				//每条数据添加进去
 				receiptTimeStampLedgerTypeKeyIds = append(receiptTimeStampLedgerTypeKeyIds, perDataKeyString)
-
+				//这里将数据存入数据库，应该改为用临时存储
 				dataReceiptByteArray, _ := json.Marshal(dataReceipt)
 				utils.PutData(clientRedis, perDataKeyString, string(dataReceiptByteArray), RequestTimeout)
 
@@ -182,38 +183,38 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
-				utils.StatisticalAllDataSize(clientRedis,LEDGER_TYPE,len(string(dataReceiptByteArray)),RequestTimeout,false)
+				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(dataReceiptByteArray)), RequestTimeout, false)
 
 				//更新创始块  部分字段 如数据量大小
 				go func() {
 					for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
-						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE,BLOCK_TYPE_ARRAY[i])
-						utils.UpdateCurrentDayDataCounts(clientRedis,LEDGER_TYPE,BLOCK_TYPE_ARRAY[i],int(preGenesisBlock.DataCounts),RequestTimeout)
-						utils.UpdateCurrentDayDataSize(clientRedis,LEDGER_TYPE,BLOCK_TYPE_ARRAY[i],int(preGenesisBlock.DataSize),RequestTimeout)
+						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+						utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
+						utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataSize), RequestTimeout)
 						//UpdateGenesisBlockToEtcdAndTdengine(dayTime+KeySplit+LEDGER_TYPE+KeySplit+BLOCK_TYPE_ARRAY[i], len(string(minuteDataByteArray)), LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
 					}
 				}()
 			}
 		} else {
-			log.Info("structArray[i]=",structArray[i])
-			if structArray[i].CreateTimestamp != ""{
+			log.Info("structArray[i]=", structArray[i])
+			if structArray[i].CreateTimestamp != "" {
 				log.Error("存证数据时间Timestamp为空，此条数据存储失败")
 			}
-			if structArray[i].KeyId != ""{
+			if structArray[i].KeyId != "" {
 				log.Error("存证数据KeyId为空，此条数据存储失败")
 			}
 		}
 	} //for
 
 	//处理延时数据 并标识变化块属于哪个分钟块
-	AutoDealDelayDataAndUpdateMinBlock(clientRedis,LEDGER_TYPE)
-	time.Sleep(time.Duration(3)*time.Second)
+	AutoDealDelayDataAndUpdateMinBlock(clientRedis, LEDGER_TYPE)
+	time.Sleep(time.Duration(3) * time.Second)
 	//表示增强块是否需要重新打包
-	DelayTenMinBlockOrPackage(clientRedis,LEDGER_TYPE)
-	time.Sleep(time.Duration(3)*time.Second)
+	DelayTenMinBlockOrPackage(clientRedis, LEDGER_TYPE)
+	time.Sleep(time.Duration(3) * time.Second)
 	//表示天块是否需要重新打包
-	DelayDailyBlockOrPackage(clientRedis,LEDGER_TYPE)
+	DelayDailyBlockOrPackage(clientRedis, LEDGER_TYPE)
 }
 
 //交易数据
@@ -221,12 +222,12 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 
 	for i := 0; i < len(structArray); i++ {
 
-		if structArray[i].CreateTimestamp != "" && structArray[i].TransactionId != ""{
+		if structArray[i].CreateTimestamp != "" && structArray[i].TransactionId != "" {
 
 			transaction := structArray[i]
 			//判断时间戳是否合法
-			if !utils.TimeTrue(transaction.CreateTimestamp){
-				log.Error("时间戳不合法",transaction.CreateTimestamp)
+			if !utils.TimeTrue(transaction.CreateTimestamp) {
+				log.Error("时间戳不合法", transaction.CreateTimestamp)
 				log.Error("正确格式为:2021-06-01 12:12:12.123")
 				continue
 			}
@@ -266,10 +267,10 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayTransactionByteArray))
 				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
-				utils.StatisticalAllDataSize(clientRedis,LEDGER_TYPE,len(string(delayTransactionByteArray)),RequestTimeout,false)
+				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayTransactionByteArray)), RequestTimeout, false)
 				//延时数据 叠加
-				utils.StatisticalCurDayDelayData(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
+				utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
 				continue
 			}
 
@@ -318,20 +319,20 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis,LEDGER_TYPE,1,RequestTimeout,false)
-				utils.StatisticalAllDataSize(clientRedis,LEDGER_TYPE,len(string(transactionByteArray)),RequestTimeout,false)
+				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(transactionByteArray)), RequestTimeout, false)
 
 				//更新当天统计字段
 				go func() {
 					for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
-						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE,BLOCK_TYPE_ARRAY[i])
-						utils.UpdateCurrentDayDataCounts(clientRedis,LEDGER_TYPE,BLOCK_TYPE_ARRAY[i],int(preGenesisBlock.DataCounts),RequestTimeout)
-						utils.UpdateCurrentDayDataSize(clientRedis,LEDGER_TYPE,BLOCK_TYPE_ARRAY[i],int(preGenesisBlock.DataSize),RequestTimeout)
+						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+						utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
+						utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataSize), RequestTimeout)
 					}
 				}()
 			}
 		} else {
-			log.Info("structArray[i]=",structArray[i])
+			log.Info("structArray[i]=", structArray[i])
 			if structArray[i].CreateTimestamp != "" {
 				log.Error("交易数据时间戳.Timestamp为空，此条数据存储失败")
 			}
@@ -342,16 +343,16 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 		}
 	} //for
 	//处理延时数据 并标识变化块属于哪个分钟块
-	AutoDealDelayDataAndUpdateMinBlock(clientRedis,LEDGER_TYPE)
-	time.Sleep(time.Duration(3)*time.Second)
+	AutoDealDelayDataAndUpdateMinBlock(clientRedis, LEDGER_TYPE)
+	time.Sleep(time.Duration(3) * time.Second)
 	//表示增强块是否需要重新打包
-	DelayTenMinBlockOrPackage(clientRedis,LEDGER_TYPE)
-	time.Sleep(time.Duration(3)*time.Second)
+	DelayTenMinBlockOrPackage(clientRedis, LEDGER_TYPE)
+	time.Sleep(time.Duration(3) * time.Second)
 	//表示天块是否需要重新打包
-	DelayDailyBlockOrPackage(clientRedis,LEDGER_TYPE)
+	DelayDailyBlockOrPackage(clientRedis, LEDGER_TYPE)
 }
 
-func GetPreGenesisBlock(ledgerType string,blockType string) pb.GenesisBlock {
+func GetPreGenesisBlock(ledgerType string, blockType string) pb.GenesisBlock {
 	//获取上一天的创世区块，将其相关字段取出来
 	//年月日 账本类型 链类型
 	preGenesisBlockKeyString := time.Now().Add(-time.Hour*24).Format("2006-01-02") + KeySplit + ledgerType + KeySplit + blockType
@@ -379,7 +380,7 @@ func UpdateGenesisBlockToEtcdAndTdengine(key string, dataSize int, LEDGER_TYPE s
 	}
 	//如果对应创始块不存在 则新建
 	if genesisBlock.CreateTimestamp == "" {
-		genesisBlock = utils.CreateGenesisBlock(key, LEDGER_TYPE, BLOCK_TYPE,0,0,"default")
+		genesisBlock = utils.CreateGenesisBlock(key, LEDGER_TYPE, BLOCK_TYPE, 0, 0, "default")
 	}
 	genesisBlock.DataCounts += int32(1)
 	genesisBlock.DataSize += int64(dataSize)

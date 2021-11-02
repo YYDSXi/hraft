@@ -11,7 +11,7 @@ func GetMinBlockHead(keyString string, LEDGER_TYPE string, BLOCK_TYPE string, bl
 	var minuteBlockHead pb.BlockHeader
 
 	timeFormatString := time.Now().Format("2006-01-02 15:04:05")
-	var naosecond = time.Now().Nanosecond() / 1e6
+	var naosecond = time.Now().Nanosecond() / 1e3
 	timeCorrect := fmt.Sprintf("%s.%d", timeFormatString, naosecond)
 
 	minuteBlockHead.CreateTimestamp = timeCorrect

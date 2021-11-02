@@ -13,7 +13,7 @@ import (
 //创始块 自动任务
 func AutoCreateGenesisBlockToEtcd(client *clientv3.Client) {
 
-	time.Sleep(time.Duration(1)*time.Second)
+	time.Sleep(time.Duration(1) * time.Second)
 	//遍历账本
 	for i := 0; i < len(GlobalLedgerArray); i++ {
 		//遍历三个链
@@ -46,24 +46,24 @@ func AutoCreateGenesisBlockToEtcd(client *clientv3.Client) {
 					}
 				}
 				//当前创世块的 数据条目数 大小  = 上一创世块字段值 + 上一天的统计量
-				curDataCounts := isExistPreGenesisBlock.DataCounts+int32(utils.GetCurrentDayDataCounts(client,GlobalLedgerArray[i],BLOCK_TYPE_ARRAY[j],RequestTimeout))
-				curDataSize:= isExistPreGenesisBlock.DataSize+int64(utils.GetCurrentDayDataSize(client,GlobalLedgerArray[i],BLOCK_TYPE_ARRAY[j],RequestTimeout))
+				curDataCounts := isExistPreGenesisBlock.DataCounts + int32(utils.GetCurrentDayDataCounts(client, GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j], RequestTimeout))
+				curDataSize := isExistPreGenesisBlock.DataSize + int64(utils.GetCurrentDayDataSize(client, GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j], RequestTimeout))
 
 				//将上一天的统计量置零
-				utils.SetCurrentDayDataCounts(client,GlobalLedgerArray[i],BLOCK_TYPE_ARRAY[j],0,RequestTimeout)
-				utils.SetCurrentDayDataSize(client,GlobalLedgerArray[i],BLOCK_TYPE_ARRAY[j],0,RequestTimeout)
+				utils.SetCurrentDayDataCounts(client, GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j], 0, RequestTimeout)
+				utils.SetCurrentDayDataSize(client, GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j], 0, RequestTimeout)
 
 				preGenesisBlockHash := isExistPreGenesisBlock.GenesisBlockHash
 				genesisBlock := utils.CreateGenesisBlock(genesisBlockKeyString, GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j],
-					curDataCounts,curDataSize,preGenesisBlockHash)
+					curDataCounts, curDataSize, preGenesisBlockHash)
 
 				//创始块存etcd
 				genesisBlockByteArray, _ := json.Marshal(genesisBlock)
 				utils.PutData(client, genesisBlockKeyString, string(genesisBlockByteArray), RequestTimeout)
 
-				log.Infof("%s账本,%s链类型创世块创建成功！",GlobalLedgerArray[i],BLOCK_TYPE_ARRAY[j])
-				log.Info("创世块key=",genesisBlockKeyString)
-				log.Info("创世块val=",string(genesisBlockByteArray))
+				log.Infof("%s账本,%s链类型创世块创建成功！", GlobalLedgerArray[i], BLOCK_TYPE_ARRAY[j])
+				log.Info("创世块key=", genesisBlockKeyString)
+				log.Info("创世块val=", string(genesisBlockByteArray))
 			}
 
 			//创始块存tdengine
