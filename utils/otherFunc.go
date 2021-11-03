@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -37,6 +38,7 @@ func GetPreOneMinTimeStamp() string {
 }
 
 func GetNowOneMinTimeStamp() string {
+	time.Sleep(10 * time.Millisecond)
 	var naosecond = time.Now().Nanosecond() / 1e3
 	timeFormatString := time.Now().Format("2006-01-02 15:04:05")
 	timeCorrect := fmt.Sprintf("%s.%d", timeFormatString, naosecond)
@@ -53,12 +55,12 @@ func GetMinIntByTimeStamp(timeStamp string) (string, int) {
 	return dayTimeArray[0], indexMinInt
 }
 
-
 //时间戳转时间
 func UnixToStr(timeUnix int64, layout string) string {
 	timeStr := time.Unix(timeUnix, 0).Format(layout)
 	return timeStr
 }
+
 //时间转时间戳
 func StrToUnix(timeStr, layout string) (int64, error) {
 	local, err := time.LoadLocation("Asia/Shanghai") //设置时区
@@ -73,14 +75,13 @@ func StrToUnix(timeStr, layout string) (int64, error) {
 	return timeUnix, nil
 }
 
-
 //构建根据时间戳  构建同一时间内第几个数据
-func DevTimestampGenerateIndex(cli *clientv3.Client,createTimestamp string,requestTimeout time.Duration) string {
+func DevTimestampGenerateIndex(cli *clientv3.Client, createTimestamp string, requestTimeout time.Duration) string {
 	//获取以该时间戳为前缀的元数据个数
 	resp := GetDataPrefix(cli, createTimestamp, requestTimeout)
 	curIndex := len(resp.Kvs) + 1
-	ms := strings.Split(createTimestamp,".")[1]
-	strFormat := "%0"+strconv.Itoa(6-len(ms))+"d"
+	ms := strings.Split(createTimestamp, ".")[1]
+	strFormat := "%0" + strconv.Itoa(6-len(ms)) + "d"
 	curIndexStr := fmt.Sprintf(strFormat, curIndex)
 	curCreateTimestamp := createTimestamp + curIndexStr
 	return curCreateTimestamp

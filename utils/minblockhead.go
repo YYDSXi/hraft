@@ -1,18 +1,14 @@
 package utils
 
 import (
-	"fmt"
 	pb "hraft/rpc"
 	"strconv"
-	"time"
 )
 
 func GetMinBlockHead(keyString string, LEDGER_TYPE string, BLOCK_TYPE string, blockHeight string) pb.BlockHeader {
 	var minuteBlockHead pb.BlockHeader
 
-	timeFormatString := time.Now().Format("2006-01-02 15:04:05")
-	var naosecond = time.Now().Nanosecond() / 1e3
-	timeCorrect := fmt.Sprintf("%s.%d", timeFormatString, naosecond)
+	timeCorrect := GetNowOneMinTimeStamp()
 
 	minuteBlockHead.CreateTimestamp = timeCorrect
 	minuteBlockHead.KeyId = keyString
