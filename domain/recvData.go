@@ -325,7 +325,7 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				transactionByteArray, _ := json.Marshal(transaction)
 				TransactionData[perDataKeyString] = string(transactionByteArray)
 				//	utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
-				utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
+				//utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 
 				log.Info("交易数据 key = ", perDataKeyString)
 				log.Info("交易数据 val = ", string(transactionByteArray))
