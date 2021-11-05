@@ -3,7 +3,6 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
-	"hraft/dataStruct"
 	pb "hraft/rpc"
 	"hraft/utils"
 	"sort"
@@ -31,20 +30,22 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			yearMonthDay = time.Now().Format("2006-01-02")
 		}
 
-		//构建前一分钟块key 获取原来在etcd中的数据
+		//构建前一分钟未打包数据的key 获取原来在etcd中的数据
 		//2021-04-20 : MD : 账本类型 : 分钟索引 : 节点ID
 		preKeyMDString := yearMonthDay + KeySplit + "MD" + KeySplit + GlobalLedgerArray[i] + KeySplit + strconv.Itoa((indexMinInt-1+1440)%1440) + KeySplit + strconv.Itoa(int(GlobalLeaderId))
-		getMDResponse := utils.GetData(clientDelayTenMin, preKeyMDString, RequestTimeout)
-		var preMinuteMDData dataStruct.MinuteData
-		for _, ev := range getMDResponse.Kvs {
-			err := json.Unmarshal(ev.Value, &preMinuteMDData)
-			if err != nil {
-				log.Error("preMinuteMDData Unmarshal err", err)
-			}
-		}
+
+		//原有的获取分钟数据
+		// getMDResponse := utils.GetData(clientDelayTenMin, preKeyMDString, RequestTimeout)
+		// var preMinuteMDData dataStruct.MinuteData
+		// for _, ev := range getMDResponse.Kvs {
+		// 	err := json.Unmarshal(ev.Value, &preMinuteMDData)
+		// 	if err != nil {
+		// 		log.Error("preMinuteMDData Unmarshal err", err)
+		// 	}
+		// }
 
 		//构建前一分钟MinBlock的key
-		//年月日 账本类型 链类型 分钟索引
+		//年月日：账本类型：链类型：分钟索引
 		preKeyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa((indexMinInt-1+1440)%1440)
 
 		//获取前前一分钟块 为了得到Blockash 赋值到前一分钟的preBlockash字段
@@ -72,10 +73,8 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			}
 		}
 		if blockHeader.CreateTimestamp == "" {
-			timeFormatString := time.Now().Format("2006-01-02 15:04:05")
-			var naosecond = time.Now().Nanosecond() / 1e6
-			timeCorrect := fmt.Sprintf("%s.%d", timeFormatString, naosecond)
-			blockHeader.CreateTimestamp = timeCorrect
+
+			blockHeader.CreateTimestamp = utils.GetNowOneMinTimeStamp()
 		}
 		//判断当前账本是存证还是交易
 		//存证
@@ -83,7 +82,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 			//初始化分钟块
 			//参数分别是 账本类型 链类型 块高度 key
-			var minBlockToTdengine = pb.MinuteDataBlock{}
+			var minBlockToTdengine = pb.MinuteDataBlock{} //结构体=块头+数据
 			timeCorrect := utils.GetNowOneMinTimeStamp()
 			blockHeader.UpdateTimestamp = timeCorrect
 
@@ -92,7 +91,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			}
 			minBlockToTdengine.Header = &blockHeader
 			dataReceipts := minBlockToTdengine.DataReceipts
-			receiptTimeStampLedgerTypeKeyIds := preMinuteMDData.ReceiptTimeStampLedgerTypeKeyId
+			receiptTimeStampLedgerTypeKeyIds := MDData[preKeyMDString]
 
 			//排序
 			sort.Strings(receiptTimeStampLedgerTypeKeyIds)
@@ -104,13 +103,20 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			//遍历每个时间戳  获取数据
 			for j := 0; j < len(receiptTimeStampLedgerTypeKeyIds); j++ {
 				//根据时间戳 获取原来在etcd中的块数据
-				getResponse := utils.GetData(clientDelayTenMin, receiptTimeStampLedgerTypeKeyIds[j], RequestTimeout)
+
 				var dataReceipt pb.DataReceipt
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &dataReceipt)
-					if err != nil {
-						log.Error("pb.DataReceipt Unmarshal err", err)
-					}
+				//原有的从数据库中读取具体数据
+				// getResponse := utils.GetData(clientDelayTenMin, receiptTimeStampLedgerTypeKeyIds[j], RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &dataReceipt)
+				// 	if err != nil {
+				// 		log.Error("pb.DataReceipt Unmarshal err", err)
+				// 	}
+				// }
+				getResponse := ReceiptData[receiptTimeStampLedgerTypeKeyIds[j]]
+				err := json.Unmarshal([]byte(getResponse), &dataReceipt)
+				if err != nil {
+					log.Error("pb.DataReceipt Unmarshal err", err)
 				}
 
 				timeStamp := strings.Split(receiptTimeStampLedgerTypeKeyIds[j], TIMESTAMP_KEYID)[0]
@@ -175,7 +181,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			}
 
 			minBlockToTdengine.Header = &blockHeader
-			transactionTimeStampLedgerTypeTxIds := preMinuteMDData.TransactionTimeStampLedgerTypeTxId
+			transactionTimeStampLedgerTypeTxIds := MDData[preKeyMDString]
 
 			//排序
 			sort.Strings(transactionTimeStampLedgerTypeTxIds)
@@ -186,14 +192,21 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			var currentDataSize int
 			for j := 0; j < len(transactionTimeStampLedgerTypeTxIds); j++ {
 				//根据时间戳 获取原来在etcd中的块数据
-				getResponse := utils.GetData(clientDelayTenMin, transactionTimeStampLedgerTypeTxIds[j], RequestTimeout)
+				//原有的从数据库中获取具体数据
+
 				var transaction pb.Transaction
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &transaction)
-					if err != nil {
-						log.Error("pb.Transaction Unmarshal err", err)
-					}
+				getResponse := TransactionData[transactionTimeStampLedgerTypeTxIds[j]]
+				err := json.Unmarshal([]byte(getResponse), &transaction)
+				if err != nil {
+					log.Error("pb.Transaction Unmarshal err", err)
 				}
+				// getResponse := utils.GetData(clientDelayTenMin, transactionTimeStampLedgerTypeTxIds[j], RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &transaction)
+				// 	if err != nil {
+				// 		log.Error("pb.Transaction Unmarshal err", err)
+				// 	}
+				// }
 
 				timeStamp := strings.Split(transactionTimeStampLedgerTypeTxIds[j], TIMESTAMP_KEYID)[0]
 				//将同一时间戳的数据排序

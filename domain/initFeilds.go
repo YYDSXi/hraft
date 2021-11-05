@@ -1,13 +1,14 @@
 package domain
 
 import (
-	logger "github.com/sirupsen/logrus"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"hraft/util/log"
 	"hraft/utils"
 	"os"
 	"strings"
 	"time"
+
+	logger "github.com/sirupsen/logrus"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 var (
@@ -49,16 +50,22 @@ var (
 	//存储延时来的ServiceAccess账本时间戳 2021-04-20 17:18:10.123 # 账本类型 # 交易ID
 	DelayLedgerServiceAccess utils.List = utils.NewArrayList()
 
-	TenMinBlockChangeVideo = make([]bool,144)
-	TenMinBlockChangeUserBehavior = make([]bool,144)
-	TenMinBlockChangeNodeCredible = make([]bool,144)
-	TenMinBlockChangeSensor = make([]bool,144)
-	TenMinBlockChangeServiceAccess = make([]bool,144)
+	//定义存储数据的map结构，数据不将存储于数据库
+	TransactionData = make(map[string]string)
+	ReceiptData     = make(map[string]string)
+	MDData          = make(map[string][]string)
+	//ReceiptMDData     = make(map[string][]string)
 
-	DailyChangeVideo = false
-	DailyChangeUserBehavior = false
-	DailyChangeNodeCredible = false
-	DailyChangeSensor = false
+	TenMinBlockChangeVideo         = make([]bool, 144)
+	TenMinBlockChangeUserBehavior  = make([]bool, 144)
+	TenMinBlockChangeNodeCredible  = make([]bool, 144)
+	TenMinBlockChangeSensor        = make([]bool, 144)
+	TenMinBlockChangeServiceAccess = make([]bool, 144)
+
+	DailyChangeVideo         = false
+	DailyChangeUserBehavior  = false
+	DailyChangeNodeCredible  = false
+	DailyChangeSensor        = false
 	DailyChangeServiceAccess = false
 )
 
@@ -69,12 +76,11 @@ var Port string
 var GlobalLeaderId uint64
 var GlobalLeaderName string
 
-func InitFeilds(cli *clientv3.Client,leaderId uint64) {
+func InitFeilds(cli *clientv3.Client, leaderId uint64) {
 	GlobalLeaderId = leaderId
 
 	DialTimeout = time.Duration(utils.Conf.Consensus.CommonConfig.Timeout) * time.Second
 	RequestTimeout = time.Duration(utils.Conf.Consensus.CommonConfig.Timeout) * time.Second
-
 
 	Port = strings.Split(utils.Conf.Consensus.EtcdGroup[GlobalLeaderName].HraftAddress, ":")[1]
 	// if ledgerType == LEDGER_TYPE_VIDEO {
@@ -101,24 +107,24 @@ func InitFeilds(cli *clientv3.Client,leaderId uint64) {
 	}
 
 	//全局变量清零
-	for i:=0;i<len(ALL_LEDGER_TYPE_ARRAY);i++{
+	for i := 0; i < len(ALL_LEDGER_TYPE_ARRAY); i++ {
 		//数据条目字段清零 最后一个参数表示 是清零操作还是 叠加操作
-		utils.StatisticalAllDataCounts(cli,ALL_LEDGER_TYPE_ARRAY[i],0,RequestTimeout,true)
+		utils.StatisticalAllDataCounts(cli, ALL_LEDGER_TYPE_ARRAY[i], 0, RequestTimeout, true)
 		//数据大小字段清零 最后一个参数表示 是清零操作还是 叠加操作
-		utils.StatisticalAllDataSize(cli,ALL_LEDGER_TYPE_ARRAY[i],0,RequestTimeout,true)
+		utils.StatisticalAllDataSize(cli, ALL_LEDGER_TYPE_ARRAY[i], 0, RequestTimeout, true)
 		//当天延时记录数，初始化参数时，先清零
-		utils.StatisticalCurDayDelayData(cli,ALL_LEDGER_TYPE_ARRAY[i],0,RequestTimeout,true)
-		for j:=0;j<len(BLOCK_TYPE_ARRAY);j++{
-			utils.SetCurrentDayDataCounts(cli,ALL_LEDGER_TYPE_ARRAY[i],BLOCK_TYPE_ARRAY[j],0,RequestTimeout)
-			utils.SetCurrentDayDataSize(cli,ALL_LEDGER_TYPE_ARRAY[i],BLOCK_TYPE_ARRAY[j],0,RequestTimeout)
+		utils.StatisticalCurDayDelayData(cli, ALL_LEDGER_TYPE_ARRAY[i], 0, RequestTimeout, true)
+		for j := 0; j < len(BLOCK_TYPE_ARRAY); j++ {
+			utils.SetCurrentDayDataCounts(cli, ALL_LEDGER_TYPE_ARRAY[i], BLOCK_TYPE_ARRAY[j], 0, RequestTimeout)
+			utils.SetCurrentDayDataSize(cli, ALL_LEDGER_TYPE_ARRAY[i], BLOCK_TYPE_ARRAY[j], 0, RequestTimeout)
 		}
 	}
 
 	//初始化变量  所有key数量
-	utils.PutData(cli,"AllKeysCounts","0",RequestTimeout)
+	utils.PutData(cli, "AllKeysCounts", "0", RequestTimeout)
 }
 
-func Init(){  //这里初始化函数，每个人可能存在差异
+func Init() { //这里初始化函数，每个人可能存在差异
 	log.Init() //设置调用上面的Init方法初始化
 	if !utils.Conf.Common.LogConfig.OutputFile {
 		logger.SetOutput(os.Stdout)

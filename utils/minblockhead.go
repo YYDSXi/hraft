@@ -7,7 +7,6 @@ import (
 
 func GetMinBlockHead(keyString string, LEDGER_TYPE string, BLOCK_TYPE string, blockHeight string) pb.BlockHeader {
 	var minuteBlockHead pb.BlockHeader
-
 	timeCorrect := GetNowOneMinTimeStamp()
 
 	minuteBlockHead.CreateTimestamp = timeCorrect

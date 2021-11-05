@@ -2,7 +2,6 @@ package domain
 
 import (
 	"encoding/json"
-	"hraft/dataStruct"
 	pb "hraft/rpc"
 	"hraft/utils"
 	"net"
@@ -113,8 +112,8 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				log.Error("时间戳超过阈值，不做处理！", dataReceipt.CreateTimestamp)
 				continue
 			} else if delayMinTimeInt > 1 {
-				//延时数据里存到数组里的key是2021-04-20 17:18:10.123 # 账本类型 # KeyId
-				//临时存储原来里面的数组
+				//延时数据里存到数组里的key是延时时间，value=2021-04-20 17:18:10.123 # 账本类型 # KeyId
+				//延时数据这里是存到延时数组中，然后再将此数据存入到数据库
 				var array interface{}
 				switch {
 				case LEDGER_TYPE == LEDGER_TYPE_VIDEO:
@@ -127,8 +126,10 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 					DelayLedgerUserBehavior.Update(delayMinTimeInt, array)
 				}
 				//这里将数据存入数据库，应该改为用临时存储
-				delayDataReceiptByteArray, _ := json.Marshal(dataReceipt)                                       //将数据结构编码成json
-				utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout) //delayDataReceiptByteArray[]byte类型，转化成string类型便于查看
+				delayDataReceiptByteArray, _ := json.Marshal(dataReceipt) //将数据结构编码成json
+				//将数据用map临时存储
+				ReceiptData[perDataKeyString] = string(delayDataReceiptByteArray)
+				//	utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout) //delayDataReceiptByteArray[]byte类型，转化成string类型便于查看
 				log.Info("接收到延时数据")
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayDataReceiptByteArray))
@@ -140,6 +141,7 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				continue
 			}
 
+			//这里开始处理不延时的数据
 			//处理同一时间戳内 有多个值切片
 			//dataReceipt.CreateTimestamp = utils.DevTimestampGenerateIndex(clientRedis, dataReceipt.CreateTimestamp, RequestTimeout)
 
@@ -147,17 +149,21 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 			//MD里面存2021-04-20 : 账本类型 : 分钟索引 : 节点ID
 			keyMDString := dayTime + KeySplit + "MD" + KeySplit + LEDGER_TYPE + KeySplit + strconv.Itoa(indexMinInt) + KeySplit + strconv.Itoa(int(GlobalLeaderId))
 
-			//获取本分钟已存etcd的MD数据
-			getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
-
-			var minuteData dataStruct.MinuteData
-			for _, ev := range getResponse.Kvs {
-				err := json.Unmarshal(ev.Value, &minuteData)
-				if err != nil {
-					log.Error("存证数据反序列化【dataStruct.MinuteData】失败：", err)
-				}
-			}
-			receiptTimeStampLedgerTypeKeyIds := minuteData.ReceiptTimeStampLedgerTypeKeyId
+			//获取本分钟已存etcd的MD数据（原有的）
+			// getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
+			// var minuteData dataStruct.MinuteData
+			// for _, ev := range getResponse.Kvs {
+			// 	err := json.Unmarshal(ev.Value, &minuteData)
+			// 	if err != nil {
+			// 		log.Error("存证数据反序列化【dataStruct.MinuteData】失败：", err)
+			// 	}
+			// }
+			// receiptTimeStampLedgerTypeKeyIds := minuteData.ReceiptTimeStampLedgerTypeKeyId
+			// if receiptTimeStampLedgerTypeKeyIds == nil {
+			// 	receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
+			// }
+			//获取本分钟钟的MD数据
+			receiptTimeStampLedgerTypeKeyIds := MDData[keyMDString]
 			if receiptTimeStampLedgerTypeKeyIds == nil {
 				receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
 			}
@@ -167,20 +173,23 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 				//每条数据添加进去
 				receiptTimeStampLedgerTypeKeyIds = append(receiptTimeStampLedgerTypeKeyIds, perDataKeyString)
+				MDData[keyMDString] = receiptTimeStampLedgerTypeKeyIds
 				//这里将数据存入数据库，应该改为用临时存储
 				dataReceiptByteArray, _ := json.Marshal(dataReceipt)
-				utils.PutData(clientRedis, perDataKeyString, string(dataReceiptByteArray), RequestTimeout)
+				ReceiptData[perDataKeyString] = string(dataReceiptByteArray)
+				//	utils.PutData(clientRedis, perDataKeyString, string(dataReceiptByteArray), RequestTimeout)
 
 				log.Info("存证数据 key = ", perDataKeyString)
 				log.Info("存证数据 val = ", string(dataReceiptByteArray))
 				log.Info("数据成功存储到Etcd！")
+				log.Info("数据成功存储到map！")
 
-				minuteData.ReceiptTimeStampLedgerTypeKeyId = receiptTimeStampLedgerTypeKeyIds
+				//minuteData.ReceiptTimeStampLedgerTypeKeyId = receiptTimeStampLedgerTypeKeyIds
 
-				minuteDataByteArray, _ := json.Marshal(minuteData)
+				//minuteDataByteArray, _ := json.Marshal(minuteData)
 
 				//更新存储时间戳的 数据结构体
-				utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
+				//utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 				//更新变量，整个服务数据量大小
 				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
@@ -262,7 +271,9 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 					DelayLedgerServiceAccess.Update(delayMinTimeInt, array)
 				}
 				delayTransactionByteArray, _ := json.Marshal(transaction)
-				utils.PutData(clientRedis, perDataKeyString, string(delayTransactionByteArray), RequestTimeout)
+				//这里存储到数据库钟，需要修改
+				TransactionData[perDataKeyString] = string(delayTransactionByteArray)
+				//	utils.PutData(clientRedis, perDataKeyString, string(delayTransactionByteArray), RequestTimeout)
 				log.Info("接收到延时数据")
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayTransactionByteArray))
@@ -281,42 +292,51 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 			//MD里面存 2021-04-20 17:18:10.123 # 账本类型 # 交易ID
 			keyMDString := dayTime + KeySplit + "MD" + KeySplit + LEDGER_TYPE + KeySplit + strconv.Itoa(indexMinInt) + KeySplit + strconv.Itoa(int(GlobalLeaderId))
 
-			//获取本分钟已存etcd的MD数据
-			getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
+			//获取本分钟已存etcd的MD数据（原有的）
+			// getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
 
-			var minuteData dataStruct.MinuteData
-			for _, ev := range getResponse.Kvs {
-				//fmt.Printf("%s -> %s\n", ev.Key, ev.Value)
-				err := json.Unmarshal(ev.Value, &minuteData)
-				if err != nil {
-					log.Error("交易数据dataStruct.MinuteData反序列化失败：", err)
-				}
-			}
-			transactionTimeStampLedgerTypeTxIds := minuteData.TransactionTimeStampLedgerTypeTxId
+			// var minuteData dataStruct.MinuteData
+			// for _, ev := range getResponse.Kvs {
+			// 	//fmt.Printf("%s -> %s\n", ev.Key, ev.Value)
+			// 	err := json.Unmarshal(ev.Value, &minuteData)
+			// 	if err != nil {
+			// 		log.Error("交易数据dataStruct.MinuteData反序列化失败：", err)
+			// 	}
+			// }
+			// transactionTimeStampLedgerTypeTxIds := minuteData.TransactionTimeStampLedgerTypeTxId
+			// if transactionTimeStampLedgerTypeTxIds == nil {
+			// 	transactionTimeStampLedgerTypeTxIds = make([]string, 0)
+			// }
+
+			//获取本分钟钟的MD数据
+			transactionTimeStampLedgerTypeTxIds := MDData[keyMDString]
 			if transactionTimeStampLedgerTypeTxIds == nil {
 				transactionTimeStampLedgerTypeTxIds = make([]string, 0)
 			}
+
 			//把每笔数据存到etcd key为2021-04-20 17:18:10.123 # 账本类型 # 交易ID
-			transactionByteArray, _ := json.Marshal(transaction)
-			utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 
 			//去重
 			if !collection.Collect(transactionTimeStampLedgerTypeTxIds).Contains(perDataKeyString) {
 				transactionTimeStampLedgerTypeTxIds = append(transactionTimeStampLedgerTypeTxIds, perDataKeyString)
+				MDData[keyMDString] = transactionTimeStampLedgerTypeTxIds
 				//排序
 				//sort.Strings(transactionTimeStamp)
-
+				transactionByteArray, _ := json.Marshal(transaction)
+				TransactionData[perDataKeyString] = string(transactionByteArray)
+				//	utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 				utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 
 				log.Info("交易数据 key = ", perDataKeyString)
 				log.Info("交易数据 val = ", string(transactionByteArray))
 				log.Info("数据成功存储到Etcd！")
+				log.Info("数据存储到map")
 
-				minuteData.TransactionTimeStampLedgerTypeTxId = transactionTimeStampLedgerTypeTxIds
-				minuteDataByteArray, _ := json.Marshal(minuteData)
+				//minuteData.TransactionTimeStampLedgerTypeTxId = transactionTimeStampLedgerTypeTxIds
+				//minuteDataByteArray, _ := json.Marshal(minuteData)
 
 				//将对应分钟数据 更新好后 存到etcd
-				utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
+				//utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 				//更新变量，整个服务数据量大小
 				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
@@ -325,7 +345,7 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				//更新当天统计字段
 				go func() {
 					for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
-						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i]) //获取上一天的创世区块
 						utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
 						utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataSize), RequestTimeout)
 					}

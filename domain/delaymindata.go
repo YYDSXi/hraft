@@ -3,7 +3,6 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
-	"hraft/dataStruct"
 	pb "hraft/rpc"
 	"hraft/utils"
 	"sort"
@@ -59,17 +58,18 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 		//上一天的天块的数据是否变化
 		WhichDailyBlockChange(indexMinInt, LEDGER_TYPE)
 
-		//构建MD的key 里面存2021-04-20 : 账本类型 : 分钟索引 : 节点ID
+		//构建MD的key 里面存2021-04-20 : MD: 账本类型 : 分钟索引 : 节点ID
 		keyMDString := yearMonthDay + KeySplit + "MD" + KeySplit + LEDGER_TYPE + KeySplit + strconv.Itoa(indexMinInt) + KeySplit + strconv.Itoa(int(GlobalLeaderId))
 		//获取延时数据所属 MD数据
-		getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
-		var minuteData dataStruct.MinuteData
-		for _, ev := range getResponse.Kvs {
-			err := json.Unmarshal(ev.Value, &minuteData)
-			if err != nil {
-				log.Error("存证数据反序列化【dataStruct.MinuteData】失败：", err)
-			}
-		}
+		//原有的从数据库中获取分钟数据
+		// getResponse := utils.GetData(clientRedis, keyMDString, RequestTimeout)
+		// var minuteData dataStruct.MinuteData
+		// for _, ev := range getResponse.Kvs {
+		// 	err := json.Unmarshal(ev.Value, &minuteData)
+		// 	if err != nil {
+		// 		log.Error("存证数据反序列化【dataStruct.MinuteData】失败：", err)
+		// 	}
+		// }
 
 		//构建延时数据 本来该属于那个分钟块 分钟快的Key
 		//年月日 账本类型 链类型 分钟索引
@@ -82,7 +82,7 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 
 		case LEDGER_TYPE_VIDEO, LEDGER_TYPE_USER_BEHAVIOR:
 			//获取延时数据所属 MD数据 获取存证切片
-			receiptTimeStampLedgerTypeKeyIds := minuteData.ReceiptTimeStampLedgerTypeKeyId
+			receiptTimeStampLedgerTypeKeyIds := MDData[keyMDString]
 			if receiptTimeStampLedgerTypeKeyIds == nil {
 				receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
 			}
@@ -101,9 +101,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			sort.Strings(receiptTimeStampLedgerTypeKeyIds)
 
 			//将新的MD数据存到etcd
-			minuteData.ReceiptTimeStampLedgerTypeKeyId = receiptTimeStampLedgerTypeKeyIds
-			minuteDataByteArray, _ := json.Marshal(minuteData)
-			utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
+			MDData[keyMDString] = receiptTimeStampLedgerTypeKeyIds
+			// minuteDataByteArray, _ := json.Marshal(minuteData)
+			// utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 			//获取延时数据 所属的分钟块(从etcd中取出)
 			var minuteBlock pb.MinuteDataBlock
@@ -121,13 +121,20 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			var currentDataSize int64 //数据量大小
 			//将延时数据 和 运来已经存在的数据 遍历排序
 			for j := 0; j < len(receiptTimeStampLedgerTypeKeyIds); j++ {
-				getPerDataResponse := utils.GetData(clientDelayMin, receiptTimeStampLedgerTypeKeyIds[j], RequestTimeout)
+				//原有的从数据库中读取具体数据
+				// getPerDataResponse := utils.GetData(clientDelayMin, receiptTimeStampLedgerTypeKeyIds[j], RequestTimeout)
+				// var perDataReceipt pb.DataReceipt
+				// for _, ev := range getPerDataResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &perDataReceipt)
+				// 	if err != nil {
+				// 		log.Error("pb.MinuteBlock Unmarshal err", err)
+				// 	}
+				// }
 				var perDataReceipt pb.DataReceipt
-				for _, ev := range getPerDataResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &perDataReceipt)
-					if err != nil {
-						log.Error("pb.MinuteBlock Unmarshal err", err)
-					}
+				getPerDataResponse := ReceiptData[receiptTimeStampLedgerTypeKeyIds[j]]
+				err := json.Unmarshal([]byte(getPerDataResponse), &perDataReceipt)
+				if err != nil {
+					log.Error("pb.DataReceipt Unmarshal err", err)
 				}
 
 				timeStamp := strings.Split(receiptTimeStampLedgerTypeKeyIds[j], TIMESTAMP_KEYID)[0]
@@ -189,7 +196,7 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			log.Info("存到etcd：val = ", string(minuteBlockByteArray))
 		case LEDGER_TYPE_NODE_CREDIBLE, LEDGER_TYPE_SENSOR, LEDGER_TYPE_SERVICE_ACCESS:
 			//获取延时数据所属 MD数据 获取存证切片
-			transactionTimeStampLedgerTypeTxIds := minuteData.TransactionTimeStampLedgerTypeTxId
+			transactionTimeStampLedgerTypeTxIds := MDData[keyMDString]
 			if transactionTimeStampLedgerTypeTxIds == nil {
 				transactionTimeStampLedgerTypeTxIds = make([]string, 0)
 			}
@@ -211,9 +218,10 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			//排序
 			sort.Strings(transactionTimeStampLedgerTypeTxIds)
 			//将新的MD数据存到etcd
-			minuteData.TransactionTimeStampLedgerTypeTxId = transactionTimeStampLedgerTypeTxIds
-			minuteDataByteArray, _ := json.Marshal(minuteData)
-			utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
+			MDData[keyMDString] = transactionTimeStampLedgerTypeTxIds
+			//原有的将分钟数据存入数据库
+			// minuteDataByteArray, _ := json.Marshal(minuteData)
+			// utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
 			//获取延时数据所属分钟块
 			var minuteBlock pb.MinuteTxBlock
@@ -231,13 +239,20 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			var currentDataSize int64 //数据量大小
 			//把数组里的所有key取出来对应数据
 			for j := 0; j < len(transactionTimeStampLedgerTypeTxIds); j++ {
-				getPerTxResponse := utils.GetData(clientDelayMin, transactionTimeStampLedgerTypeTxIds[j], RequestTimeout)
+				//原有的从数据库中获取具体数据
+				// getPerTxResponse := utils.GetData(clientDelayMin, transactionTimeStampLedgerTypeTxIds[j], RequestTimeout)
+				// var perDataTx pb.Transaction
+				// for _, ev := range getPerTxResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &perDataTx)
+				// 	if err != nil {
+				// 		log.Error("pb.MinuteBlock Unmarshal err", err)
+				// 	}
+				// }
 				var perDataTx pb.Transaction
-				for _, ev := range getPerTxResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &perDataTx)
-					if err != nil {
-						log.Error("pb.MinuteBlock Unmarshal err", err)
-					}
+				getPerDataResponse := TransactionData[transactionTimeStampLedgerTypeTxIds[j]]
+				err := json.Unmarshal([]byte(getPerDataResponse), &perDataTx)
+				if err != nil {
+					log.Error("pb.Transaction Unmarshal err", err)
 				}
 
 				timeStamp := strings.Split(transactionTimeStampLedgerTypeTxIds[j], TIMESTAMP_KEYID)[0]
@@ -307,7 +322,7 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 func WhichTenMinBlockChange(indexMinInt int, LEDGER_TYPE string) {
 	switch LEDGER_TYPE {
 	case LEDGER_TYPE_VIDEO:
-		TenMinBlockChangeVideo[(indexMinInt/10+144)%144] = true
+		TenMinBlockChangeVideo[(indexMinInt/10+144)%144] = true //TenMinBlockChangeVideo= make([]bool, 144)
 	case LEDGER_TYPE_USER_BEHAVIOR:
 		TenMinBlockChangeUserBehavior[(indexMinInt/10+144)%144] = true
 	case LEDGER_TYPE_NODE_CREDIBLE:

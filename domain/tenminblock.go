@@ -31,6 +31,7 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 		} else { //说明是打包当天增强块
 			yearMonthDay = time.Now().Format("2006-01-02")
 		}
+		//构建增强块的key
 		preKeyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa((indexMinInt/10-1+144)%144)
 
 		//构建前前一个十分钟块的key  主要作用是得到 前前一分钟块的BlockHash 填充到前一分钟块中的 PreBlockHash 字段
