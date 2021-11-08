@@ -77,15 +77,17 @@ func DealDelayTenMinData(LEDGER_TYPE string, minBlockChangeArray []bool, changeT
 		var minBlocksArray []*pb.MinuteTxBlock
 		for j := 0; j < 10; j++ {
 			var minBlock pb.MinuteTxBlock
-			keyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(changeTenMinBlockIndex*10+j)
-			//获取每一分钟块数据
-			getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-			for _, ev := range getResponse.Kvs {
-				err := json.Unmarshal(ev.Value, &minBlock)
-				if err != nil {
-					log.Error("反解析", err)
-				}
-			}
+			//keyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(changeTenMinBlockIndex*10+j)
+			//获取每一分钟块数据（从数据库中）
+			// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+			// for _, ev := range getResponse.Kvs {
+			// 	err := json.Unmarshal(ev.Value, &minBlock)
+			// 	if err != nil {
+			// 		log.Error("反解析", err)
+			// 	}
+			// }
+			//从交易分钟块文件中获取
+			minBlock = utils.ReadTxMinFiletoTenmin(yearMonthDay, LEDGER_TYPE, strconv.Itoa(changeTenMinBlockIndex*10+j))
 			minBlocksArray = append(minBlocksArray, &minBlock)
 		}
 		prePreBlockHash := "default"
@@ -116,15 +118,17 @@ func DealDelayTenMinData(LEDGER_TYPE string, minBlockChangeArray []bool, changeT
 		var minBlocksArray []*pb.MinuteDataBlock
 		for j := 0; j < 10; j++ {
 			var minBlock pb.MinuteDataBlock
-			keyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(changeTenMinBlockIndex*10+j)
-			//获取每一分钟块数据
-			getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-			for _, ev := range getResponse.Kvs {
-				err := json.Unmarshal(ev.Value, &minBlock)
-				if err != nil {
-					log.Error("反解析", err)
-				}
-			}
+			//keyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(changeTenMinBlockIndex*10+j)
+			//获取每一分钟块数据(从数据库中)
+			// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+			// for _, ev := range getResponse.Kvs {
+			// 	err := json.Unmarshal(ev.Value, &minBlock)
+			// 	if err != nil {
+			// 		log.Error("反解析", err)
+			// 	}
+			// }
+			//从存证分钟快文件中获取
+			minBlock = utils.ReadReMinFiletoTenmin(yearMonthDay, LEDGER_TYPE, strconv.Itoa(changeTenMinBlockIndex*10+j))
 			minBlocksArray = append(minBlocksArray, &minBlock)
 		}
 		prePreBlockHash := "default"
@@ -143,7 +147,7 @@ func DealDelayTenMinData(LEDGER_TYPE string, minBlockChangeArray []bool, changeT
 
 	}
 	//存到etcd
-	utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
+	//utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
 
 	log.Infof("%s账本稳定增强块排序打包成功!", LEDGER_TYPE)
 	log.Info("稳定增强块key=", string(preKeyString))

@@ -5,6 +5,7 @@ import (
 	"hraft/utils"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	logger "github.com/sirupsen/logrus"
@@ -55,6 +56,10 @@ var (
 	ReceiptData     = make(map[string]string)
 	MDData          = make(map[string][]string)
 	//ReceiptMDData     = make(map[string][]string)
+	//为map加锁变量
+	TransactionDatamu *sync.RWMutex
+	ReceiptDatamu     *sync.RWMutex
+	MDDatamu          *sync.RWMutex
 
 	TenMinBlockChangeVideo         = make([]bool, 144)
 	TenMinBlockChangeUserBehavior  = make([]bool, 144)
@@ -110,6 +115,7 @@ func InitFeilds(cli *clientv3.Client, leaderId uint64) {
 	for i := 0; i < len(ALL_LEDGER_TYPE_ARRAY); i++ {
 		//数据条目字段清零 最后一个参数表示 是清零操作还是 叠加操作
 		utils.StatisticalAllDataCounts(cli, ALL_LEDGER_TYPE_ARRAY[i], 0, RequestTimeout, true)
+		utils.SetBlockDataCountsKey(cli, ALL_LEDGER_TYPE_ARRAY[i], BLOCK_TYPE_MIN, 0, RequestTimeout)
 		//数据大小字段清零 最后一个参数表示 是清零操作还是 叠加操作
 		utils.StatisticalAllDataSize(cli, ALL_LEDGER_TYPE_ARRAY[i], 0, RequestTimeout, true)
 		//当天延时记录数，初始化参数时，先清零

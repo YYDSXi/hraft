@@ -75,16 +75,18 @@ func DealDelayDailyData(LEDGER_TYPE string, DailyChange bool) {
 		var tenMinBlocksInterfaceArray []*pb.TenMinuteTxBlock
 		//遍历144个增强块 填充到tenMinBlocksArray
 		for j := 0; j < 144; j++ {
-			keyString := preDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
+			//keyString := preDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
 			var tenMinuteBlock pb.TenMinuteTxBlock
-			//根据时间戳 获取原来在etcd中的块数据
-			getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-			for _, ev := range getResponse.Kvs {
-				err := json.Unmarshal(ev.Value, &tenMinuteBlock)
-				if err != nil {
-					log.Error("genesisBlock Unmarshal err", err)
-				}
-			}
+			//根据时间戳 获取原来在etcd中的块数据(从数据库中获取)
+			// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+			// for _, ev := range getResponse.Kvs {
+			// 	err := json.Unmarshal(ev.Value, &tenMinuteBlock)
+			// 	if err != nil {
+			// 		log.Error("genesisBlock Unmarshal err", err)
+			// 	}
+			// }
+			//从交易增强块文件中获取
+			tenMinuteBlock = utils.ReadTxTenMinFiletoDay(preDay, LEDGER_TYPE, strconv.Itoa(j))
 			tenMinBlocksInterfaceArray = append(tenMinBlocksInterfaceArray, &tenMinuteBlock)
 		}
 
@@ -112,16 +114,18 @@ func DealDelayDailyData(LEDGER_TYPE string, DailyChange bool) {
 		var tenMinBlocksInterfaceArray []*pb.TenMinuteDataBlock
 		//遍历144个增强块 填充到tenMinBlocksArray
 		for j := 0; j < 144; j++ {
-			keyString := preDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
+			//keyString := preDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
 			var tenMinuteBlock pb.TenMinuteDataBlock
-			//根据时间戳 获取原来在etcd中的块数据
-			getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-			for _, ev := range getResponse.Kvs {
-				err := json.Unmarshal(ev.Value, &tenMinuteBlock)
-				if err != nil {
-					log.Error("genesisBlock Unmarshal err", err)
-				}
-			}
+			//根据时间戳 获取原来在etcd中的块数据（从数据库中）
+			// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+			// for _, ev := range getResponse.Kvs {
+			// 	err := json.Unmarshal(ev.Value, &tenMinuteBlock)
+			// 	if err != nil {
+			// 		log.Error("genesisBlock Unmarshal err", err)
+			// 	}
+			// }
+			//从存证增强块文件中获取
+			tenMinuteBlock = utils.ReadReTenMinFiletoDay(preDay, LEDGER_TYPE, strconv.Itoa(j))
 			tenMinBlocksInterfaceArray = append(tenMinBlocksInterfaceArray, &tenMinuteBlock)
 		}
 
@@ -138,7 +142,7 @@ func DealDelayDailyData(LEDGER_TYPE string, DailyChange bool) {
 		utils.WriteReblocktoDayfile(preDay, LEDGER_TYPE, strconv.Itoa(int(time.Now().Sub(t).Hours()/24)+1), dailyBlock)
 	}
 	//存到etcd
-	utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
+	//utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
 
 	log.Infof("%s账本天块排序打包成功!", LEDGER_TYPE)
 	log.Info("天块key=", string(preKeyString))

@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chenhg5/collection"
@@ -51,6 +52,10 @@ func (s *server) Upper(ctx context.Context, in *pb.UpperRequest) (*pb.UpperReply
 
 //Video账本类型  存证数据
 func (s *server) Video(ctx context.Context, in *pb.VideoData) (*pb.Response, error) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
 	go ToEtcdDbDataReceipt(in.DataReceipts, ALL_LEDGER_TYPE_ARRAY[0])
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
@@ -58,6 +63,10 @@ func (s *server) Video(ctx context.Context, in *pb.VideoData) (*pb.Response, err
 
 //UserBehaviour账本类型  存证数据
 func (s *server) UserBehaviour(ctx context.Context, in *pb.UserBehaviourData) (*pb.Response, error) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	log.Info("UserBehaviour账本类型，接收到数据:", in.DataReceipts)
 	go ToEtcdDbDataReceipt(in.DataReceipts, ALL_LEDGER_TYPE_ARRAY[1])
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
@@ -65,6 +74,10 @@ func (s *server) UserBehaviour(ctx context.Context, in *pb.UserBehaviourData) (*
 
 //NodeCredible账本类型  交易数据
 func (s *server) NodeCredible(ctx context.Context, in *pb.NodeCredibleData) (*pb.Response, error) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	log.Info("NodeCredible账本类型，接收到数据:", in.Transactions)
 	go ToEtcdDbTransaction(in.Transactions, ALL_LEDGER_TYPE_ARRAY[2])
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
@@ -72,6 +85,10 @@ func (s *server) NodeCredible(ctx context.Context, in *pb.NodeCredibleData) (*pb
 
 //Sensor账本类型  交易数据
 func (s *server) Sensor(ctx context.Context, in *pb.SensorData) (*pb.Response, error) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	log.Info("Sensor账本类型，接收到数据:", in.Transactions)
 	go ToEtcdDbTransaction(in.Transactions, ALL_LEDGER_TYPE_ARRAY[3])
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
@@ -79,6 +96,10 @@ func (s *server) Sensor(ctx context.Context, in *pb.SensorData) (*pb.Response, e
 
 //ServiceAccess账本类型  交易数据
 func (s *server) ServiceAccess(ctx context.Context, in *pb.ServiceAccessData) (*pb.Response, error) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	log.Info("ServiceAccess账本类型，接收到数据:", in.Transactions)
 	go ToEtcdDbTransaction(in.Transactions, ALL_LEDGER_TYPE_ARRAY[4])
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
@@ -87,6 +108,9 @@ func (s *server) ServiceAccess(ctx context.Context, in *pb.ServiceAccessData) (*
 //将接收到的存证数据存入数据库
 //[]*proto.DataReceipt
 func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
+	var AllDataCounts int = 0
+	var AllDataSize int = 0
+	var CurDayDelayData int = 0
 
 	for i := 0; i < len(structArray); i++ {
 
@@ -128,16 +152,21 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				//这里将数据存入数据库，应该改为用临时存储
 				delayDataReceiptByteArray, _ := json.Marshal(dataReceipt) //将数据结构编码成json
 				//将数据用map临时存储
+				ReceiptDatamu.Lock()
 				ReceiptData[perDataKeyString] = string(delayDataReceiptByteArray)
+				ReceiptDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout) //delayDataReceiptByteArray[]byte类型，转化成string类型便于查看
 				log.Info("接收到延时数据")
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayDataReceiptByteArray))
-				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
-				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayDataReceiptByteArray)), RequestTimeout, false)
+				//更新变量，整个服务数据量大小(原有的)
+				// utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				// utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayDataReceiptByteArray)), RequestTimeout, false)
 				//延时数据 叠加
-				utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				//utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				AllDataCounts = AllDataCounts + 1
+				AllDataSize = AllDataSize + len(string(delayDataReceiptByteArray))
+				CurDayDelayData = CurDayDelayData + 1
 				continue
 			}
 
@@ -163,7 +192,9 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 			// 	receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
 			// }
 			//获取本分钟钟的MD数据
+			MDDatamu.RLock()
 			receiptTimeStampLedgerTypeKeyIds := MDData[keyMDString]
+			MDDatamu.RUnlock()
 			if receiptTimeStampLedgerTypeKeyIds == nil {
 				receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
 			}
@@ -173,10 +204,14 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 				//每条数据添加进去
 				receiptTimeStampLedgerTypeKeyIds = append(receiptTimeStampLedgerTypeKeyIds, perDataKeyString)
+				MDDatamu.Lock()
 				MDData[keyMDString] = receiptTimeStampLedgerTypeKeyIds
+				MDDatamu.Unlock()
 				//这里将数据存入数据库，应该改为用临时存储
 				dataReceiptByteArray, _ := json.Marshal(dataReceipt)
+				ReceiptDatamu.Lock()
 				ReceiptData[perDataKeyString] = string(dataReceiptByteArray)
+				ReceiptDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(dataReceiptByteArray), RequestTimeout)
 
 				log.Info("存证数据 key = ", perDataKeyString)
@@ -191,30 +226,47 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				//更新存储时间戳的 数据结构体
 				//utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
-				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
-				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(dataReceiptByteArray)), RequestTimeout, false)
+				//更新变量，整个服务数据量大小（原有的）
+				// utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				// utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(dataReceiptByteArray)), RequestTimeout, false)
+				AllDataCounts = AllDataCounts + 1
+				AllDataSize = AllDataSize + len(string(dataReceiptByteArray))
 
-				//更新创始块  部分字段 如数据量大小
-				go func() {
-					for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
-						preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
-						utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
-						utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataSize), RequestTimeout)
-						//UpdateGenesisBlockToEtcdAndTdengine(dayTime+KeySplit+LEDGER_TYPE+KeySplit+BLOCK_TYPE_ARRAY[i], len(string(minuteDataByteArray)), LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
-					}
-				}()
+				//更新创始块  部分字段 如数据量大小(原有的)
+				// go func() {
+				// 	for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
+				// 		preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+				// 		//utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
+				// 		utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], AllDataCounts, RequestTimeout)
+				// 		utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataSize), RequestTimeout)
+				// 		//UpdateGenesisBlockToEtcdAndTdengine(dayTime+KeySplit+LEDGER_TYPE+KeySplit+BLOCK_TYPE_ARRAY[i], len(string(minuteDataByteArray)), LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+				// 	}
+				// }()
 			}
 		} else {
 			log.Info("structArray[i]=", structArray[i])
-			if structArray[i].CreateTimestamp != "" {
+			if structArray[i].CreateTimestamp == "" {
 				log.Error("存证数据时间Timestamp为空，此条数据存储失败")
 			}
-			if structArray[i].KeyId != "" {
+			if structArray[i].KeyId == "" {
 				log.Error("存证数据KeyId为空，此条数据存储失败")
 			}
 		}
 	} //for
+	//更新变量，整个服务数据量大小(现有的)
+	utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, AllDataCounts, RequestTimeout, false)
+	utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, AllDataSize, RequestTimeout, false)
+	//延时数据 叠加
+	utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, CurDayDelayData, RequestTimeout, false)
+	go func() {
+		for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
+			//preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+			//utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
+			utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], AllDataCounts, RequestTimeout)
+			utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], AllDataSize, RequestTimeout)
+			//UpdateGenesisBlockToEtcdAndTdengine(dayTime+KeySplit+LEDGER_TYPE+KeySplit+BLOCK_TYPE_ARRAY[i], len(string(minuteDataByteArray)), LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+		}
+	}()
 
 	//处理延时数据 并标识变化块属于哪个分钟块
 	AutoDealDelayDataAndUpdateMinBlock(clientRedis, LEDGER_TYPE)
@@ -228,6 +280,9 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 //交易数据
 func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
+	var AllDataCounts int = 0
+	var AllDataSize int = 0
+	var CurDayDelayData int = 0
 
 	for i := 0; i < len(structArray); i++ {
 
@@ -272,16 +327,18 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				}
 				delayTransactionByteArray, _ := json.Marshal(transaction)
 				//这里存储到数据库钟，需要修改
+				TransactionDatamu.Lock()
 				TransactionData[perDataKeyString] = string(delayTransactionByteArray)
+				TransactionDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(delayTransactionByteArray), RequestTimeout)
 				log.Info("接收到延时数据")
 				log.Info("key=", perDataKeyString)
 				log.Info("val=", string(delayTransactionByteArray))
-				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
-				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayTransactionByteArray)), RequestTimeout, false)
-				//延时数据 叠加
-				utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				//更新变量，整个服务数据量大小（愿有的）
+				// utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				// utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayTransactionByteArray)), RequestTimeout, false)
+				// //延时数据 叠加
+				// utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
 				continue
 			}
 
@@ -309,7 +366,9 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 			// }
 
 			//获取本分钟钟的MD数据
+			MDDatamu.RLock()
 			transactionTimeStampLedgerTypeTxIds := MDData[keyMDString]
+			MDDatamu.RUnlock()
 			if transactionTimeStampLedgerTypeTxIds == nil {
 				transactionTimeStampLedgerTypeTxIds = make([]string, 0)
 			}
@@ -319,11 +378,15 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 			//去重
 			if !collection.Collect(transactionTimeStampLedgerTypeTxIds).Contains(perDataKeyString) {
 				transactionTimeStampLedgerTypeTxIds = append(transactionTimeStampLedgerTypeTxIds, perDataKeyString)
+				MDDatamu.Lock()
 				MDData[keyMDString] = transactionTimeStampLedgerTypeTxIds
+				MDDatamu.Unlock()
 				//排序
 				//sort.Strings(transactionTimeStamp)
 				transactionByteArray, _ := json.Marshal(transaction)
+				TransactionDatamu.Lock()
 				TransactionData[perDataKeyString] = string(transactionByteArray)
+				TransactionDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 				//utils.PutData(clientRedis, perDataKeyString, string(transactionByteArray), RequestTimeout)
 
@@ -338,9 +401,9 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 				//将对应分钟数据 更新好后 存到etcd
 				//utils.PutData(clientRedis, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
-				//更新变量，整个服务数据量大小
-				utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
-				utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(transactionByteArray)), RequestTimeout, false)
+				//更新变量，整个服务数据量大小（原有的）
+				// utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
+				//utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(transactionByteArray)), RequestTimeout, false)
 
 				//更新当天统计字段
 				go func() {
@@ -353,15 +416,29 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 			}
 		} else {
 			log.Info("structArray[i]=", structArray[i])
-			if structArray[i].CreateTimestamp != "" {
+			if structArray[i].CreateTimestamp == "" {
 				log.Error("交易数据时间戳.Timestamp为空，此条数据存储失败")
 			}
-			if structArray[i].TransactionId != "" {
+			if structArray[i].TransactionId == "" {
 				log.Error("交易数据Id为空，此条数据存储失败")
 			}
 
 		}
 	} //for
+	//更新变量，整个服务数据量大小(现有的)
+	utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, AllDataCounts, RequestTimeout, false)
+	utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, AllDataSize, RequestTimeout, false)
+	//延时数据 叠加
+	utils.StatisticalCurDayDelayData(clientRedis, LEDGER_TYPE, CurDayDelayData, RequestTimeout, false)
+	go func() {
+		for i := 0; i < len(BLOCK_TYPE_ARRAY); i++ {
+			//preGenesisBlock := GetPreGenesisBlock(LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+			//utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], int(preGenesisBlock.DataCounts), RequestTimeout)
+			utils.UpdateCurrentDayDataCounts(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], AllDataCounts, RequestTimeout)
+			utils.UpdateCurrentDayDataSize(clientRedis, LEDGER_TYPE, BLOCK_TYPE_ARRAY[i], AllDataSize, RequestTimeout)
+			//UpdateGenesisBlockToEtcdAndTdengine(dayTime+KeySplit+LEDGER_TYPE+KeySplit+BLOCK_TYPE_ARRAY[i], len(string(minuteDataByteArray)), LEDGER_TYPE, BLOCK_TYPE_ARRAY[i])
+		}
+	}()
 	//处理延时数据 并标识变化块属于哪个分钟块
 	AutoDealDelayDataAndUpdateMinBlock(clientRedis, LEDGER_TYPE)
 	time.Sleep(time.Duration(3) * time.Second)

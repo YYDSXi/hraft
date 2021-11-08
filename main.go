@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"hraft/domain"
+	"hraft/serviceregister"
 	"hraft/utils"
 	"os"
 	"strings"
 	"time"
-	"hraft/serviceregister"
+
 	log "github.com/sirupsen/logrus"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -54,7 +55,7 @@ func main() {
 
 			isHaveLeader = true
 			//初始化参数 uint64
-			domain.InitFeilds(client,resp.Leader)
+			domain.InitFeilds(client, resp.Leader)
 
 			if domain.Port == "-1" {
 				log.Error("不存在该账本...")
@@ -62,7 +63,7 @@ func main() {
 			}
 
 			//注册服务
-			go serviceregister.RegisterService(client,domain.GlobalLeaderName)
+			go serviceregister.RegisterService(client, domain.GlobalLeaderName)
 
 			//开启redis接受数据服务
 			go domain.RedisServerMain(client)

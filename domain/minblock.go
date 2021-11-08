@@ -100,6 +100,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			num := 1
 			//当前数据量大小
 			var currentDataSize int
+			var blockDatacounts int
 			//遍历每个时间戳  获取数据
 			for j := 0; j < len(receiptTimeStampLedgerTypeKeyIds); j++ {
 				//根据时间戳 获取原来在etcd中的块数据
@@ -113,7 +114,9 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 				// 		log.Error("pb.DataReceipt Unmarshal err", err)
 				// 	}
 				// }
+				ReceiptDatamu.RLock()
 				getResponse := ReceiptData[receiptTimeStampLedgerTypeKeyIds[j]]
+				ReceiptDatamu.RUnlock()
 				err := json.Unmarshal([]byte(getResponse), &dataReceipt)
 				if err != nil {
 					log.Error("pb.DataReceipt Unmarshal err", err)
@@ -143,6 +146,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 				dataReceiptByteArray, _ := json.Marshal(dataReceipt)
 				//数据量大小叠加
 				currentDataSize += len(string(dataReceiptByteArray))
+				blockDatacounts = blockDatacounts + 1
 			}
 
 			//填充剩余字段
@@ -153,10 +157,15 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			//yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + strconv.Itoa((indexMinInt-1+1440)%1440)
 			utils.WriteReblocktominfile(yearMonthDay, GlobalLedgerArray[i], strconv.Itoa((indexMinInt-1+1440)%1440), minBlockToTdengine)
 			log.Info("正在写入文件")
-			minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine)
+			//只存区块头
+			minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine.Header)
+			//minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine)
 
 			//存到etcd
 			utils.PutData(clientDelayTenMin, preKeyString, string(minBlockToTdengineByteArray), RequestTimeout)
+			//打包成功的数据量
+			//utils.UpdateBlockDataCountsKey(clientDelayTenMin, GlobalLedgerArray[i], BLOCK_TYPE_MIN, len(receiptTimeStampLedgerTypeKeyIds), RequestTimeout)
+			utils.UpdateBlockDataCountsKey(clientDelayTenMin, GlobalLedgerArray[i], BLOCK_TYPE_MIN, blockDatacounts, RequestTimeout)
 
 			log.Infof("%s账本存证数据分钟块排序打包成功！", GlobalLedgerArray[i])
 			log.Info("存到etcd：key = ", preKeyString)
@@ -190,12 +199,15 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			num := 1
 			//当前数据量大小
 			var currentDataSize int
+			var blockDatacounts int
 			for j := 0; j < len(transactionTimeStampLedgerTypeTxIds); j++ {
 				//根据时间戳 获取原来在etcd中的块数据
 				//原有的从数据库中获取具体数据
 
 				var transaction pb.Transaction
+				TransactionDatamu.RLock()
 				getResponse := TransactionData[transactionTimeStampLedgerTypeTxIds[j]]
+				TransactionDatamu.RUnlock()
 				err := json.Unmarshal([]byte(getResponse), &transaction)
 				if err != nil {
 					log.Error("pb.Transaction Unmarshal err", err)
@@ -229,6 +241,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 				transactions = append(transactions, &transaction)
 				transactionByteArray, _ := json.Marshal(transaction)
 				currentDataSize += len(string(transactionByteArray))
+				blockDatacounts = blockDatacounts + 1
 			}
 
 			//填充剩余字段
@@ -236,13 +249,18 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			minBlockToTdengine.Header = utils.FillTdengineMinBlockHeader(minBlockToTdengine.Header, GlobalLedgerArray[i], BLOCK_TYPE_MIN, int64(len(transactionTimeStampLedgerTypeTxIds)),
 				int64(currentDataSize))
 			minBlockToTdengine.Transactions = transactions
-			minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine)
+			//只存区块头
+			minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine.Header)
+			//minBlockToTdengineByteArray, _ := json.Marshal(minBlockToTdengine)
 			//写入文件
 			//yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + strconv.Itoa((indexMinInt-1+1440)%1440)
 			utils.WriteTxblocktominfile(yearMonthDay, GlobalLedgerArray[i], strconv.Itoa((indexMinInt-1+1440)%1440), minBlockToTdengine)
 
 			//存到etcd
 			utils.PutData(clientDelayTenMin, preKeyString, string(minBlockToTdengineByteArray), RequestTimeout)
+			//打包成功的数据量
+			//utils.UpdateBlockDataCountsKey(clientDelayTenMin, GlobalLedgerArray[i], BLOCK_TYPE_MIN, len(transactionTimeStampLedgerTypeTxIds), RequestTimeout)
+			utils.UpdateBlockDataCountsKey(clientDelayTenMin, GlobalLedgerArray[i], BLOCK_TYPE_MIN, blockDatacounts, RequestTimeout)
 
 			log.Infof("%s账本交易数据分钟块排序打包成功！", GlobalLedgerArray[i])
 			log.Info("存到etcd：key = ", preKeyString)

@@ -56,15 +56,17 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			var minBlocksArray []*pb.MinuteTxBlock
 			for j := 0; j < 10; j++ {
 				var minBlock pb.MinuteTxBlock
-				keyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j)
+				//keyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j)
+				//获取每一分钟块数据(从数据库中读取)
+				// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &minBlock)
+				// 	if err != nil {
+				// 		log.Error("反解析", err)
+				// 	}
+				// }
 				//获取每一分钟块数据
-				getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &minBlock)
-					if err != nil {
-						log.Error("反解析", err)
-					}
-				}
+				minBlock = utils.ReadTxMinFiletoTenmin(yearMonthDay, GlobalLedgerArray[i], strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j))
 				minBlocksArray = append(minBlocksArray, &minBlock)
 			}
 			prePreBlockHash := "default"
@@ -94,15 +96,17 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			var minBlocksArray []*pb.MinuteDataBlock
 			for j := 0; j < 10; j++ {
 				var minBlock pb.MinuteDataBlock
-				keyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j)
-				//获取每一分钟块数据
-				getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &minBlock)
-					if err != nil {
-						log.Error("反解析", err)
-					}
-				}
+				//keyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j)
+				//获取每一分钟块数据从数据库中)
+				// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &minBlock)
+				// 	if err != nil {
+				// 		log.Error("反解析", err)
+				// 	}
+				// }
+				//从分钟文件中读取数据
+				minBlock = utils.ReadReMinFiletoTenmin(yearMonthDay, GlobalLedgerArray[i], strconv.Itoa((((indexMinInt/10)-1+144)%144)*10+j))
 				minBlocksArray = append(minBlocksArray, &minBlock)
 			}
 			prePreBlockHash := "default"
@@ -121,8 +125,8 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 		}
 
-		//存到etcd
-		utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
+		//增强块存到etcd
+		//utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
 
 		log.Infof("%s账本增强块排序打包成功!", GlobalLedgerArray[i])
 		log.Info("增强块key=", string(preKeyString))

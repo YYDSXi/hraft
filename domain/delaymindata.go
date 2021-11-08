@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chenhg5/collection"
@@ -19,6 +20,10 @@ var clientDelayMin *clientv3.Client
 
 //处理延时数据
 func AutoDealDelayDataAndUpdateMinBlock(client *clientv3.Client, LEDGER_TYPE string) {
+	//为存储数据的全局变量加锁
+	TransactionDatamu = new(sync.RWMutex)
+	ReceiptDatamu = new(sync.RWMutex)
+	MDDatamu = new(sync.RWMutex)
 	clientDelayMin = client
 	switch LEDGER_TYPE {
 	case LEDGER_TYPE_VIDEO:
@@ -82,7 +87,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 
 		case LEDGER_TYPE_VIDEO, LEDGER_TYPE_USER_BEHAVIOR:
 			//获取延时数据所属 MD数据 获取存证切片
+			MDDatamu.RLock()
 			receiptTimeStampLedgerTypeKeyIds := MDData[keyMDString]
+			MDDatamu.RUnlock()
 			if receiptTimeStampLedgerTypeKeyIds == nil {
 				receiptTimeStampLedgerTypeKeyIds = make([]string, 0)
 			}
@@ -101,7 +108,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			sort.Strings(receiptTimeStampLedgerTypeKeyIds)
 
 			//将新的MD数据存到etcd
+			MDDatamu.Lock()
 			MDData[keyMDString] = receiptTimeStampLedgerTypeKeyIds
+			MDDatamu.Unlock()
 			// minuteDataByteArray, _ := json.Marshal(minuteData)
 			// utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
 
@@ -119,7 +128,7 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			temp := ""
 			num := 1
 			var currentDataSize int64 //数据量大小
-			//将延时数据 和 运来已经存在的数据 遍历排序
+			//将延时数据 和 原来已经存在的数据 遍历排序
 			for j := 0; j < len(receiptTimeStampLedgerTypeKeyIds); j++ {
 				//原有的从数据库中读取具体数据
 				// getPerDataResponse := utils.GetData(clientDelayMin, receiptTimeStampLedgerTypeKeyIds[j], RequestTimeout)
@@ -131,7 +140,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 				// 	}
 				// }
 				var perDataReceipt pb.DataReceipt
+				ReceiptDatamu.RLock()
 				getPerDataResponse := ReceiptData[receiptTimeStampLedgerTypeKeyIds[j]]
+				ReceiptDatamu.RUnlock()
 				err := json.Unmarshal([]byte(getPerDataResponse), &perDataReceipt)
 				if err != nil {
 					log.Error("pb.DataReceipt Unmarshal err", err)
@@ -182,7 +193,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			//填充剩余字段
 			//参数分别是 结构体 目前数据记录量 目前数据量 transactions结构体
 			minuteBlock.Header = utils.FillTdengineMinBlockHeader(minuteBlock.Header, LEDGER_TYPE, BLOCK_TYPE_MIN, int64(newInsertDataCount), currentDataSize)
-			minuteBlockByteArray, _ := json.Marshal(minuteBlock)
+			//只存区块头
+			minuteBlockByteArray, _ := json.Marshal(minuteBlock.Header)
+			//minuteBlockByteArray, _ := json.Marshal(minuteBlock)
 			//存入文件
 			//	minBlockKeyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(indexMinInt)
 
@@ -190,13 +203,17 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 
 			//存到etcd
 			utils.PutData(clientDelayMin, minBlockKeyString, string(minuteBlockByteArray), RequestTimeout)
+			//打包成功的数据量
+			utils.UpdateBlockDataCountsKey(clientDelayTenMin, LEDGER_TYPE, BLOCK_TYPE_MIN, newInsertDataCount, RequestTimeout)
 
 			log.Infof("%s账本稳定分钟块打包成功！", LEDGER_TYPE)
 			log.Info("存到etcd：key = ", minBlockKeyString)
 			log.Info("存到etcd：val = ", string(minuteBlockByteArray))
 		case LEDGER_TYPE_NODE_CREDIBLE, LEDGER_TYPE_SENSOR, LEDGER_TYPE_SERVICE_ACCESS:
 			//获取延时数据所属 MD数据 获取存证切片
+			MDDatamu.RLock()
 			transactionTimeStampLedgerTypeTxIds := MDData[keyMDString]
+			MDDatamu.RUnlock()
 			if transactionTimeStampLedgerTypeTxIds == nil {
 				transactionTimeStampLedgerTypeTxIds = make([]string, 0)
 			}
@@ -218,7 +235,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			//排序
 			sort.Strings(transactionTimeStampLedgerTypeTxIds)
 			//将新的MD数据存到etcd
+			MDDatamu.Lock()
 			MDData[keyMDString] = transactionTimeStampLedgerTypeTxIds
+			MDDatamu.Unlock()
 			//原有的将分钟数据存入数据库
 			// minuteDataByteArray, _ := json.Marshal(minuteData)
 			// utils.PutData(clientDelayMin, keyMDString, string(minuteDataByteArray), RequestTimeout)
@@ -249,7 +268,9 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 				// 	}
 				// }
 				var perDataTx pb.Transaction
+				TransactionDatamu.RLock()
 				getPerDataResponse := TransactionData[transactionTimeStampLedgerTypeTxIds[j]]
+				TransactionDatamu.RUnlock()
 				err := json.Unmarshal([]byte(getPerDataResponse), &perDataTx)
 				if err != nil {
 					log.Error("pb.Transaction Unmarshal err", err)
@@ -303,13 +324,17 @@ func DealDelayData(ledgerList utils.List, LEDGER_TYPE string) {
 			//填充剩余字段
 			//参数分别是 结构体 目前数据记录量 目前数据量 transactions结构体
 			minuteBlock.Header = utils.FillTdengineMinBlockHeader(minuteBlock.Header, LEDGER_TYPE, BLOCK_TYPE_MIN, int64(newInsertDataCount), currentDataSize)
-			minuteBlockByteArray, _ := json.Marshal(minuteBlock)
+			//只存区块头
+			minuteBlockByteArray, _ := json.Marshal(minuteBlock.Header)
+			//minuteBlockByteArray, _ := json.Marshal(minuteBlock)
 			//存入文件
 			//	minBlockKeyString := yearMonthDay + KeySplit + LEDGER_TYPE + KeySplit + BLOCK_TYPE_MIN + KeySplit + strconv.Itoa(indexMinInt)
 
 			utils.WriteTxblocktominfile(yearMonthDay, LEDGER_TYPE, strconv.Itoa(indexMinInt), minuteBlock)
 			//存到etcd
 			utils.PutData(clientDelayMin, minBlockKeyString, string(minuteBlockByteArray), RequestTimeout)
+			//打包成功的数据量
+			utils.UpdateBlockDataCountsKey(clientDelayTenMin, LEDGER_TYPE, BLOCK_TYPE_MIN, newInsertDataCount, RequestTimeout)
 
 			log.Infof("%s账本稳定分钟块打包成功！", LEDGER_TYPE)
 			log.Info("稳定分钟块存到etcd：key = ", minBlockKeyString)

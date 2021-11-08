@@ -46,16 +46,18 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			var tenMinBlocksInterfaceArray []*pb.TenMinuteTxBlock
 			//遍历144个增强块 填充到tenMinBlocksArray
 			for j := 0; j < 144; j++ {
-				keyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
+				//keyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
 				var tenMinuteBlock pb.TenMinuteTxBlock
-				//根据时间戳 获取原来在etcd中的块数据
-				getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &tenMinuteBlock)
-					if err != nil {
-						log.Error("genesisBlock Unmarshal err", err)
-					}
-				}
+				//根据时间戳 获取原来在etcd中的块数据（从数据库中获取）
+				// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &tenMinuteBlock)
+				// 	if err != nil {
+				// 		log.Error("genesisBlock Unmarshal err", err)
+				// 	}
+				// }
+				//从交易增强块文件中读取
+				tenMinuteBlock = utils.ReadTxTenMinFiletoDay(preDay, GlobalLedgerArray[i], strconv.Itoa(j))
 				tenMinBlocksInterfaceArray = append(tenMinBlocksInterfaceArray, &tenMinuteBlock)
 			}
 
@@ -83,16 +85,18 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			var tenMinBlocksInterfaceArray []*pb.TenMinuteDataBlock
 			//遍历144个增强块 填充到tenMinBlocksArray
 			for j := 0; j < 144; j++ {
-				keyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
+				//keyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa(j)
 				var tenMinuteBlock pb.TenMinuteDataBlock
-				//根据时间戳 获取原来在etcd中的块数据
-				getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
-				for _, ev := range getResponse.Kvs {
-					err := json.Unmarshal(ev.Value, &tenMinuteBlock)
-					if err != nil {
-						log.Error("genesisBlock Unmarshal err", err)
-					}
-				}
+				//根据时间戳 获取原来在etcd中的块数据(从数据库中获取)
+				// getResponse := utils.GetData(clientDelayTenMin, keyString, RequestTimeout)
+				// for _, ev := range getResponse.Kvs {
+				// 	err := json.Unmarshal(ev.Value, &tenMinuteBlock)
+				// 	if err != nil {
+				// 		log.Error("genesisBlock Unmarshal err", err)
+				// 	}
+				// }
+				//从存证增强块文件中获取增强块数据
+				tenMinuteBlock = utils.ReadReTenMinFiletoDay(preDay, GlobalLedgerArray[i], strconv.Itoa(j))
 				tenMinBlocksInterfaceArray = append(tenMinBlocksInterfaceArray, &tenMinuteBlock)
 			}
 
@@ -110,7 +114,7 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 		}
 		//存到etcd
-		utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
+		//utils.PutData(clientDelayTenMin, preKeyString, string(value), RequestTimeout)
 
 		log.Infof("%s账本天块排序打包成功!", GlobalLedgerArray[i])
 		log.Info("天块key=", string(preKeyString))

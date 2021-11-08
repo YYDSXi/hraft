@@ -20,7 +20,7 @@ func AutoCreateGenesisBlockToEtcd(client *clientv3.Client) {
 		for j := 0; j < len(BLOCK_TYPE_ARRAY); j++ {
 
 			//构建创始块的key
-			//年月日 账本类型 链类型
+			//年月日:账本类型:链类型
 			genesisBlockKeyString := time.Now().Format("2006-01-02") + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_ARRAY[j]
 
 			//判断创始块是否已存在
