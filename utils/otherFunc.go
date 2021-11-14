@@ -29,6 +29,15 @@ func GetIndexMinInt() int {
 	//timeCorrect:=fmt.Sprintf("%s.%d",timeFormatString,naosecond)
 	return indexMinInt
 }
+func GetNowSecondInt() int {
+	timeFormatString := time.Now().Format("2006-01-02 15:04:05")
+	//var naosecond = time.Now().Nanosecond()/1e6
+	dayTimeArray := strings.Split(timeFormatString, " ")
+	secondTimeArray := strings.Split(dayTimeArray[1], ":")
+	secondint, _ := strconv.Atoi(secondTimeArray[2])
+
+	return secondint
+}
 
 func GetPreOneMinTimeStamp() string {
 	var naosecond = time.Now().Nanosecond() / 1e3

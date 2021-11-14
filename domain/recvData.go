@@ -130,12 +130,15 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 
 			//计算延时时间
 			delayMinTimeInt := utils.GetIndexMinInt() - indexMinInt
+			NowSecond := utils.GetNowSecondInt()
 			//如果是10分钟之前的数据 过滤掉不处理
 			if delayMinTimeInt > utils.Conf.Consensus.CommonConfig.Timeout {
 				log.Error("数据", structArray[i])
 				log.Error("时间戳超过阈值，不做处理！", dataReceipt.CreateTimestamp)
 				continue
-			} else if delayMinTimeInt > 1 {
+			} else if delayMinTimeInt > 1 || (delayMinTimeInt == 1 && NowSecond > 30) {
+				//大于1一定是延时数据;等于1时,当现在时间为打包时间即30s之前,则为正常接收数据,若30s之后接收数据则判定为延时数据.
+
 				//延时数据里存到数组里的key是延时时间，value=2021-04-20 17:18:10.123 # 账本类型 # KeyId
 				//延时数据这里是存到延时数组中，然后再将此数据存入到数据库
 				var array interface{}
@@ -302,7 +305,7 @@ func ToEtcdDbTransaction(structArray []*pb.Transaction, LEDGER_TYPE string) {
 			perDataKeyString := transaction.CreateTimestamp + TIMESTAMP_KEYID + LEDGER_TYPE + TIMESTAMP_KEYID + transaction.TransactionId
 
 			//计算延时时间
-			delayMinTimeInt := utils.GetIndexMinInt() - indexMinInt
+			delayMinTimeInt := utils.GetIndexMinInt() - indexMinInt //获取现在时间索引-数据的时间索引
 			//如果是10分钟之前的数据 过滤掉不处理
 			if delayMinTimeInt > 10 {
 				log.Info("时间戳超过阈值，不做处理！", transaction.CreateTimestamp)
