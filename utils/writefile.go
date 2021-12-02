@@ -2,10 +2,11 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	pb "hraft/rpc"
 	"io/ioutil"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // type Student struct {
@@ -19,7 +20,8 @@ func WriteReblocktominfile(time string, ledger string, index string, minReblock 
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE"
@@ -27,13 +29,16 @@ func WriteReblocktominfile(time string, ledger string, index string, minReblock 
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(minReblock)
-	fmt.Println("write file success =")
+
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+
+		log.Error("Writefile Error = ", err)
 		return
 	}
 
@@ -58,7 +63,7 @@ func WriteTxblocktominfile(time string, ledger string, index string, minTxblock 
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE"
@@ -66,13 +71,13 @@ func WriteTxblocktominfile(time string, ledger string, index string, minTxblock 
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(minTxblock)
-	fmt.Println("write file success =")
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+		log.Error("Writefile Error = ", err)
 		return
 	}
 }
@@ -82,7 +87,7 @@ func WriteReblocktoTenminfile(time string, ledger string, index string, tenminRe
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE"
@@ -90,13 +95,13 @@ func WriteReblocktoTenminfile(time string, ledger string, index string, tenminRe
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(tenminReblock)
-	fmt.Println("write file success =")
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+		log.Error("Writefile Error = ", err)
 		return
 	}
 }
@@ -106,7 +111,7 @@ func WriteTxblocktoTenminfile(time string, ledger string, index string, tenminTx
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE"
@@ -114,13 +119,13 @@ func WriteTxblocktoTenminfile(time string, ledger string, index string, tenminTx
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(tenminTxblock)
-	fmt.Println("write file success =")
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+		log.Error("Writefile Error = ", err)
 		return
 	}
 }
@@ -130,7 +135,7 @@ func WriteReblocktoDayfile(time string, ledger string, index string, dayReblock 
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/DAY"
@@ -138,13 +143,13 @@ func WriteReblocktoDayfile(time string, ledger string, index string, dayReblock 
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(dayReblock)
-	fmt.Println("write file success =")
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+		log.Error("Writefile Error = ", err)
 		return
 	}
 }
@@ -154,7 +159,7 @@ func WriteTxblocktoDayfile(time string, ledger string, index string, dayTxblock 
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		filedirectory = mindirectory + "/scope/" + time + "/" + ledger + "/DAY"
@@ -162,13 +167,13 @@ func WriteTxblocktoDayfile(time string, ledger string, index string, dayTxblock 
 	)
 	err1 := os.MkdirAll(filedirectory, os.ModePerm)
 	if err1 != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件目录失败: ", err1)
 	}
 
 	fileContent, err := json.Marshal(dayTxblock)
-	fmt.Println("write file success =")
+	log.Info("write file success")
 	if err = ioutil.WriteFile(fileName, fileContent, 0666); err != nil {
-		fmt.Println("Writefile Error =", err)
+		log.Error("Writefile Error = ", err)
 		return
 	}
 }

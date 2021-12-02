@@ -2,10 +2,11 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	pb "hraft/rpc"
 	"io/ioutil"
 	"os"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // type Student struct {
@@ -19,7 +20,7 @@ func ReadTxMinFiletoTenmin(time string, ledger string, index string) pb.MinuteTx
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		fileName = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE" + "/" + index
@@ -28,12 +29,14 @@ func ReadTxMinFiletoTenmin(time string, ledger string, index string) pb.MinuteTx
 	//读取文件
 	fileContent, err1 := ioutil.ReadFile(fileName)
 	if err1 != nil {
-		fmt.Println("Read file err =", err)
+
+		log.Error("Read file err = ", err1)
 
 	}
 	var minBlock pb.MinuteTxBlock
 	if err := json.Unmarshal(fileContent, &minBlock); err != nil {
-		fmt.Println("反解析 file error =", err)
+
+		log.Error("反解析 file error = ", err)
 	}
 	return minBlock
 }
@@ -44,7 +47,7 @@ func ReadReMinFiletoTenmin(time string, ledger string, index string) pb.MinuteDa
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		fileName = mindirectory + "/scope/" + time + "/" + ledger + "/MINUTE" + "/" + index
@@ -53,12 +56,12 @@ func ReadReMinFiletoTenmin(time string, ledger string, index string) pb.MinuteDa
 	//读取文件
 	fileContent, err1 := ioutil.ReadFile(fileName)
 	if err1 != nil {
-		fmt.Println("Read file err =", err)
+		log.Error("Read file err = ", err1)
 
 	}
 	var minBlock pb.MinuteDataBlock
 	if err := json.Unmarshal(fileContent, &minBlock); err != nil {
-		fmt.Println("反解析 file error =", err)
+		log.Error("反解析 file error = ", err)
 	}
 	return minBlock
 }
@@ -69,7 +72,7 @@ func ReadTxTenMinFiletoDay(time string, ledger string, index string) pb.TenMinut
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		fileName = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE" + "/" + index
@@ -78,12 +81,12 @@ func ReadTxTenMinFiletoDay(time string, ledger string, index string) pb.TenMinut
 	//读取文件
 	fileContent, err1 := ioutil.ReadFile(fileName)
 	if err1 != nil {
-		fmt.Println("Read file err =", err)
+		log.Error("Read file err = ", err1)
 
 	}
 	var tenMinuteBlock pb.TenMinuteTxBlock
 	if err := json.Unmarshal(fileContent, &tenMinuteBlock); err != nil {
-		fmt.Println("反解析 file error =", err)
+		log.Error("反解析 file error = ", err)
 	}
 	return tenMinuteBlock
 }
@@ -94,7 +97,7 @@ func ReadReTenMinFiletoDay(time string, ledger string, index string) pb.TenMinut
 	mindirectory, err := os.Getwd()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Error("创建区块文件主目录失败: ", err)
 	}
 	var (
 		fileName = mindirectory + "/scope/" + time + "/" + ledger + "/TENMINUTE" + "/" + index
@@ -103,12 +106,12 @@ func ReadReTenMinFiletoDay(time string, ledger string, index string) pb.TenMinut
 	//读取文件
 	fileContent, err1 := ioutil.ReadFile(fileName)
 	if err1 != nil {
-		fmt.Println("Read file err =", err)
+		log.Error("Read file err = ", err1)
 
 	}
 	var tenMinuteBlock pb.TenMinuteDataBlock
 	if err := json.Unmarshal(fileContent, &tenMinuteBlock); err != nil {
-		fmt.Println("反解析 file error =", err)
+		log.Error("反解析 file error = ", err)
 	}
 	return tenMinuteBlock
 }

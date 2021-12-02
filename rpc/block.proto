@@ -44,6 +44,8 @@ message DataReceipt {
     string AttachmentTotalHash=16;
 }
 
+    
+
 //交易数据
 message Transaction {
     string CreateTimestamp =1;

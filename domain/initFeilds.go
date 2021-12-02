@@ -132,7 +132,9 @@ func InitFeilds(cli *clientv3.Client, leaderId uint64) {
 
 func Init() { //这里初始化函数，每个人可能存在差异
 	log.Init() //设置调用上面的Init方法初始化
+
 	if !utils.Conf.Common.LogConfig.OutputFile {
 		logger.SetOutput(os.Stdout)
 	}
+
 }

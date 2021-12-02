@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"fmt"
 	pb "hraft/rpc"
 	"hraft/utils"
 	"strconv"
@@ -40,8 +41,10 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 		//填充剩余字段
 		//上一个十分钟key对应的value值
-		var value []byte
+		//var value []byte
+		start := time.Now().UnixNano()
 		switch GlobalLedgerArray[i] {
+
 		case LEDGER_TYPE_NODE_CREDIBLE, LEDGER_TYPE_SENSOR, LEDGER_TYPE_SERVICE_ACCESS:
 			//获取上上一个十分钟块
 			var prePreTenMinuteTxBlock pb.TenMinuteTxBlock
@@ -77,13 +80,14 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 				BLOCK_TYPE_TENMINUT, prePreBlockHash, (indexMinInt/10-1+144)%144, preKeyString)
 			tenMinuteBlock.Blocks = minBlocksArray
 			tenMinuteBlock = utils.FillTdengineTxTenMinBlockRemainingFieldsAndDataReceipts(tenMinuteBlock)
-			value, _ = json.Marshal(tenMinuteBlock)
+			//value, _ = json.Marshal(tenMinuteBlock)
 			//存入文件
 			//preKeyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa((indexMinInt/10-1+144)%144)
 
 			utils.WriteTxblocktoTenminfile(yearMonthDay, GlobalLedgerArray[i], strconv.Itoa((indexMinInt/10-1+144)%144), tenMinuteBlock)
 
 		case LEDGER_TYPE_VIDEO, LEDGER_TYPE_USER_BEHAVIOR:
+
 			//获取上上一个十分钟块
 			var prePreTenMinuteDataBlock pb.TenMinuteDataBlock
 			for _, ev := range getResponse.Kvs {
@@ -117,7 +121,7 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 				BLOCK_TYPE_TENMINUT, prePreBlockHash, (indexMinInt/10-1+144)%144, preKeyString)
 			tenMinuteBlock.Blocks = minBlocksArray
 			tenMinuteBlock = utils.FillTdengineDataTenMinBlockRemainingFieldsAndDataReceipts(tenMinuteBlock)
-			value, _ = json.Marshal(tenMinuteBlock)
+			//value, _ = json.Marshal(tenMinuteBlock)
 			//存入文件
 			//preKeyString := yearMonthDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_TENMINUT + KeySplit + strconv.Itoa((indexMinInt/10-1+144)%144)
 
@@ -130,7 +134,9 @@ func AutoCreateTenMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 		log.Infof("%s账本增强块排序打包成功!", GlobalLedgerArray[i])
 		log.Info("增强块key=", string(preKeyString))
-		log.Info("增强块value=", string(value))
+		//log.Info("增强块value=", string(value))
+		end := time.Now().UnixNano()
+		fmt.Printf("打包%s增强块总用时：%v毫秒\n", string(preKeyString), (end-start)/1000000)
 	}
 }
 

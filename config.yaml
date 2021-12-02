@@ -19,7 +19,7 @@ common:
     debug_log_name: debug.log
     error_log_name: error.log
     log_level: debug
-    output_file: false
+    output_file: true
   cache_cluster: [redis1]
   ledger_name:
     node_credible:
@@ -50,10 +50,10 @@ cache:
     response: 30
   redis_group:
     redis1:
-      host: 10.112.91.87
+      host: 10.112.79.24
       port: 6379
       webservice:
-        url: 10.112.236.102:9000
+        url: ":9000"
 
 # 共识网络
 consensus:

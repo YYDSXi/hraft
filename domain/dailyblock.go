@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -32,7 +34,8 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 		//得到 前前一天块的BlockHash 填充到前一天块中的 PreBlockHash 字段
 		getResponse := utils.GetData(clientDelayTenMin, prePreKeyString, RequestTimeout)
 
-		var value []byte
+		//var value []byte
+		start := time.Now().UnixNano()
 		switch GlobalLedgerArray[i] {
 		case LEDGER_TYPE_NODE_CREDIBLE, LEDGER_TYPE_SENSOR, LEDGER_TYPE_SERVICE_ACCESS:
 
@@ -67,7 +70,7 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			dailyBlock.Blocks = tenMinBlocksInterfaceArray
 			//填充剩余字段
 			dailyBlock = utils.FillTdengineTxDailyBlockRemainingFieldsAndDataReceipts(dailyBlock)
-			value, _ = json.Marshal(dailyBlock)
+			//value, _ = json.Marshal(dailyBlock)
 			//存入文件
 			//preKeyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_DAY + KeySplit + strconv.Itoa(int(time.Now().Sub(t).Hours()/24)+1)
 
@@ -106,7 +109,7 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 			dailyBlock.Blocks = tenMinBlocksInterfaceArray
 			//填充剩余字段
 			dailyBlock = utils.FillTdengineDataDailyBlockRemainingFieldsAndDataReceipts(dailyBlock)
-			value, _ = json.Marshal(dailyBlock)
+			//value, _ = json.Marshal(dailyBlock)
 			//存入文件
 			//preKeyString := preDay + KeySplit + GlobalLedgerArray[i] + KeySplit + BLOCK_TYPE_DAY + KeySplit + strconv.Itoa(int(time.Now().Sub(t).Hours()/24)+1)
 
@@ -118,7 +121,9 @@ func AutoCreateDailyBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 		log.Infof("%s账本天块排序打包成功!", GlobalLedgerArray[i])
 		log.Info("天块key=", string(preKeyString))
-		log.Info("天块value=", string(value))
+		//log.Info("天块value=", string(value))
+		end := time.Now().UnixNano()
+		fmt.Printf("打包%s分钟块总用时：%v毫秒\n", string(preKeyString), (end-start)/1000000)
 
 		//存到Tdengine
 		////utils.PutDailyBlockToTdengine(dailyBlock, GlobalLedgerArray[i])

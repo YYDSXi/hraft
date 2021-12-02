@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	
+
 	pb "hraft/hello"
 )
 
@@ -37,7 +37,10 @@ const (
 
 func main() {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	//opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(size)))
+	//conn, err := grpc.Dial(address, opts...)
+	recvSize := 6108890
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(recvSize)))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

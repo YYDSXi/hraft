@@ -53,6 +53,22 @@ func GetNowOneMinTimeStamp() string {
 	timeCorrect := fmt.Sprintf("%s.%d", timeFormatString, naosecond)
 	return timeCorrect
 }
+func GetNowOneMinTimeStamp2() string {
+	//time.Sleep(1 * time.Millisecond)
+	var naosecond = time.Now().Nanosecond()
+	stringnase := strconv.Itoa(naosecond)
+	nasecount := len(stringnase)
+	naosecond1 := stringnase[nasecount-3 : nasecount-2]
+	naosecond2 := stringnase[nasecount-2 : nasecount-1]
+	naosecond3 := stringnase[nasecount-1 : nasecount]
+	// naosecond1 := 1
+	// naosecond2 := 2
+	// naosecond3 := 3
+	timeFormatString := time.Now().Format("2006-01-02 15:04:05")
+	timeCorrect := fmt.Sprintf("%s.%s%s%s", timeFormatString, naosecond1, naosecond2, naosecond3)
+	//fmt.Println(timeCorrect)
+	return timeCorrect
+}
 
 func GetMinIntByTimeStamp(timeStamp string) (string, int) {
 	dayTimeArray := strings.Split(timeStamp, " ")

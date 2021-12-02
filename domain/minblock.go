@@ -79,6 +79,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 		//判断当前账本是存证还是交易
 		//存证
 		if GlobalLedgerArray[i] == LEDGER_TYPE_VIDEO || GlobalLedgerArray[i] == LEDGER_TYPE_USER_BEHAVIOR {
+			start := time.Now().UnixNano()
 
 			//初始化分钟块
 			//参数分别是 账本类型 链类型 块高度 key
@@ -141,7 +142,7 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 					dataReceipt.CreateTimestamp = ans
 				}
 
-				log.Info("构建的时间戳为：", dataReceipt.CreateTimestamp)
+				//	log.Info("构建的时间戳为：", dataReceipt.CreateTimestamp)
 				dataReceipts = append(dataReceipts, &dataReceipt)
 				dataReceiptByteArray, _ := json.Marshal(dataReceipt)
 				//数据量大小叠加
@@ -173,6 +174,8 @@ func AutoCreateMinBlockToEtcd(clientDelayTenMin *clientv3.Client) {
 
 			//存到Tdengine
 			////utils.PutMinBlockToTdengine(minBlockToTdengine, GlobalLedgerArray[i])
+			end := time.Now().UnixNano()
+			fmt.Printf("打包分钟块%s总用时：%v毫秒\n", preKeyString, (end-start)/1000000)
 
 		} else { //交易
 

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"fmt"
 	pb "hraft/rpc"
 	"hraft/utils"
 	"net"
@@ -36,7 +37,14 @@ func StartGrpcPort(port string) {
 	}
 	log.Infof("%s端口开启成功！", Port)
 
-	s := grpc.NewServer()
+	recvSize := 6108890
+	sendSize := 6108890
+	var options = []grpc.ServerOption{
+		grpc.MaxRecvMsgSize(recvSize),
+		grpc.MaxSendMsgSize(sendSize),
+	}
+
+	s := grpc.NewServer(options...)
 	pb.RegisterToUpperServer(s, &server{})
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
@@ -56,8 +64,12 @@ func (s *server) Video(ctx context.Context, in *pb.VideoData) (*pb.Response, err
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
+	//log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
+	start := time.Now().UnixNano()
 	go ToEtcdDbDataReceipt(in.DataReceipts, ALL_LEDGER_TYPE_ARRAY[0])
+	end := time.Now().UnixNano()
+	datacounts := len(in.DataReceipts)
+	fmt.Printf("接收%d条数据总用时：%v纳秒\n", datacounts, (end - start))
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
@@ -159,9 +171,9 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				ReceiptData[perDataKeyString] = string(delayDataReceiptByteArray)
 				ReceiptDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(delayDataReceiptByteArray), RequestTimeout) //delayDataReceiptByteArray[]byte类型，转化成string类型便于查看
-				log.Info("接收到延时数据")
-				log.Info("key=", perDataKeyString)
-				log.Info("val=", string(delayDataReceiptByteArray))
+				//log.Info("接收到延时数据")
+				//log.Info("接收到延时数据key=", perDataKeyString)
+				//	log.Info("val=", string(delayDataReceiptByteArray))
 				//更新变量，整个服务数据量大小(原有的)
 				// utils.StatisticalAllDataCounts(clientRedis, LEDGER_TYPE, 1, RequestTimeout, false)
 				// utils.StatisticalAllDataSize(clientRedis, LEDGER_TYPE, len(string(delayDataReceiptByteArray)), RequestTimeout, false)
@@ -217,10 +229,10 @@ func ToEtcdDbDataReceipt(structArray []*pb.DataReceipt, LEDGER_TYPE string) {
 				ReceiptDatamu.Unlock()
 				//	utils.PutData(clientRedis, perDataKeyString, string(dataReceiptByteArray), RequestTimeout)
 
-				log.Info("存证数据 key = ", perDataKeyString)
-				log.Info("存证数据 val = ", string(dataReceiptByteArray))
-				log.Info("数据成功存储到Etcd！")
-				log.Info("数据成功存储到map！")
+				//log.Info("存证数据 key = ", perDataKeyString)
+				//	log.Info("存证数据 val = ", string(dataReceiptByteArray))
+				//	log.Info("数据成功存储到Etcd！")
+				//log.Info("数据成功存储到map！")
 
 				//minuteData.ReceiptTimeStampLedgerTypeKeyId = receiptTimeStampLedgerTypeKeyIds
 

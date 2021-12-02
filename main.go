@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -23,6 +23,7 @@ var (
 )
 
 var isHaveLeader = false
+var log = logrus.New()
 
 func main() {
 
